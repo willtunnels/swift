@@ -1206,13 +1206,25 @@ public:
   // Type Parsing
   
   ParserResult<TypeRepr> parseType();
+
+  /// `OpaqueTypes` optionally provides a set of identifiers which should be
+  /// parsed as `OpaqueReturnTypeRepr`s. This is used for parsing named opaque
+  /// types in function returns, e.g. in:
+  ///
+  /// func foo() -> <T> T
+  ///
+  /// `T` must be parsed as an `OpaqueReturnTypeRepr`, but this fact is
+  /// dependent on the context of `parseType`'s caller.
   ParserResult<TypeRepr> parseType(Diag<> MessageID,
+                                   OpaqueReturnTypeSet *OpaqueTypes = nullptr,
                                    bool IsSILFuncDecl = false);
 
   ParserResult<TypeRepr>
-    parseTypeSimpleOrComposition(Diag<> MessageID);
+    parseTypeSimpleOrComposition(Diag<> MessageID,
+                                 OpaqueReturnTypeSet *OpaqueTypes = nullptr);
 
-  ParserResult<TypeRepr> parseTypeSimple(Diag<> MessageID);
+  ParserResult<TypeRepr> parseTypeSimple(Diag<> MessageID,
+                                         OpaqueReturnTypeSet *OpaqueTypes = nullptr);
 
   /// Parse layout constraint.
   LayoutConstraint parseLayoutConstraint(Identifier LayoutConstraintID);

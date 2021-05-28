@@ -1863,6 +1863,8 @@ ERROR(opaque_type_invalid_constraint,none,
 ERROR(inferred_opaque_type,none,
       "property definition has inferred type %0, involving the 'some' "
       "return type of another declaration", (Type))
+ERROR(unreferenced_opaque_return_type,NoUsage,
+      "opaque type '%0' is not used in function return type", (StringRef))
 
 // Extensions
 ERROR(non_nominal_extension,none,

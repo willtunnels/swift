@@ -151,7 +151,8 @@ LayoutConstraint Parser::parseLayoutConstraint(Identifier LayoutConstraintID) {
 ///     type-simple '!'
 ///     type-collection
 ///     type-array
-ParserResult<TypeRepr> Parser::parseTypeSimple(Diag<> MessageID) {
+ParserResult<TypeRepr> Parser::parseTypeSimple(Diag<> MessageID,
+                                               OpaqueReturnTypeSet *OpaqueTypes) {
   ParserResult<TypeRepr> ty;
 
   if (Tok.is(tok::kw_inout) ||
@@ -168,6 +169,7 @@ ParserResult<TypeRepr> Parser::parseTypeSimple(Diag<> MessageID) {
   case tok::kw_Any:
   case tok::identifier: {
     ty = parseTypeIdentifier();
+    auto name = ty.getPtrOrNull()
     break;
   }
   case tok::l_paren:
@@ -324,7 +326,8 @@ ParserResult<TypeRepr> Parser::parseSILBoxType(GenericParamList *generics,
 ///     type-composition 'async'? 'throws'? '->' type
 ///
 ParserResult<TypeRepr> Parser::parseType(Diag<> MessageID,
-                                         bool IsSILFuncDecl) {
+                                         bool IsSILFuncDecl,
+                                         OpaqueReturnTypeSet *OpaqueTypes) {
   // Start a context for creating type syntax.
   SyntaxParsingContext TypeParsingContext(SyntaxContext,
                                           SyntaxContextKind::Type);
@@ -362,7 +365,7 @@ ParserResult<TypeRepr> Parser::parseType(Diag<> MessageID,
     return parseSILBoxType(generics, attrs);
   }
 
-  ParserResult<TypeRepr> ty = parseTypeSimpleOrComposition(MessageID);
+  ParserResult<TypeRepr> ty = parseTypeSimpleOrComposition(MessageID, OpaqueTypes);
   status |= ParserStatus(ty);
   if (ty.isNull())
     return status;
@@ -539,7 +542,8 @@ ParserResult<TypeRepr> Parser::parseType(Diag<> MessageID,
                                                        specifierLoc));
 }
 
-ParserResult<TypeRepr> Parser::parseDeclResultType(Diag<> MessageID) {
+ParserResult<TypeRepr> Parser::parseDeclResultType(Diag<> MessageID,
+                                                   SmallPtrSetImpl<GenericTypeParamDecl *> &OpaqueTypes) {
   if (Tok.is(tok::code_complete)) {
     if (CodeCompletion)
       CodeCompletion->completeTypeDeclResultBeginning();
@@ -547,7 +551,7 @@ ParserResult<TypeRepr> Parser::parseDeclResultType(Diag<> MessageID) {
     return makeParserCodeCompletionStatus();
   }
 
-  auto result = parseType(MessageID);
+  auto result = parseType(MessageID, OpaqueTypes);
 
   if (!result.isParseErrorOrHasCompletion()) {
     if (Tok.is(tok::r_square)) {
@@ -635,7 +639,8 @@ ParserStatus Parser::parseGenericArguments(SmallVectorImpl<TypeRepr *> &Args,
 ///     identifier generic-args? ('.' identifier generic-args?)*
 ///
 ParserResult<TypeRepr>
-Parser::parseTypeIdentifier(bool isParsingQualifiedDeclBaseType) {
+Parser::parseTypeIdentifier(bool isParsingQualifiedDeclBaseType,
+                            OpaqueReturnTypeSet *OpaqueTypes) {
   // If parsing a qualified declaration name, return error if base type cannot
   // be parsed.
   if (isParsingQualifiedDeclBaseType && !canParseBaseTypeForQualifiedDeclName())
@@ -745,6 +750,22 @@ Parser::parseTypeIdentifier(bool isParsingQualifiedDeclBaseType) {
     consumeToken(tok::code_complete);
   }
 
+  // If the base identifier is in our list of opaque types, wrap our
+  // `IdentTypeRepr` in an `OpaqueReturnTypeRepr`.
+  if (!ComponentsR.empty()) {
+    auto Component = ComponentsR.front();
+    auto ID = Component->getNameRef().getBaseIdentifier();
+    if (auto *OpaqueType = OpaqueTypes ? OpaqueTypes->find(ID) : nullptr) {
+      // If present, opaque return types reside in our innermost type scope.
+      if (ComponentsR.size() > 1) {
+
+      }
+      auto Loc = Component->getNameLoc().getBaseNameLoc();
+      return makeParserResult(Status,
+                              new (Context) OpaqueReturnTypeRepr(Loc, ITR));
+    }
+  }
+
   return makeParserResult(Status, ITR);
 }
 
@@ -754,7 +775,8 @@ Parser::parseTypeIdentifier(bool isParsingQualifiedDeclBaseType) {
 ///     'some'? type-simple
 ///     type-composition '&' type-simple
 ParserResult<TypeRepr>
-Parser::parseTypeSimpleOrComposition(Diag<> MessageID) {
+Parser::parseTypeSimpleOrComposition(Diag<> MessageID,
+                                     OpaqueReturnTypeSet *OpaqueTypes) {
   SyntaxParsingContext SomeTypeContext(SyntaxContext, SyntaxKind::SomeType);
   // Check for the opaque modifier.
   // This is only semantically allowed in certain contexts, but we parse it
@@ -768,7 +790,7 @@ Parser::parseTypeSimpleOrComposition(Diag<> MessageID) {
     // This isn't a some type.
     SomeTypeContext.setTransparent();
   }
-  
+
   auto applyOpaque = [&](TypeRepr *type) -> TypeRepr* {
     if (opaqueLoc.isValid()) {
       type = new (Context) OpaqueReturnTypeRepr(opaqueLoc, type);
@@ -778,7 +800,7 @@ Parser::parseTypeSimpleOrComposition(Diag<> MessageID) {
   
   SyntaxParsingContext CompositionContext(SyntaxContext, SyntaxContextKind::Type);
   // Parse the first type
-  ParserResult<TypeRepr> FirstType = parseTypeSimple(MessageID);
+  ParserResult<TypeRepr> FirstType = parseTypeSimple(MessageID, OpaqueTypes);
   if (FirstType.isNull())
     return FirstType;
   if (!Tok.isContextualPunctuator("&")) {

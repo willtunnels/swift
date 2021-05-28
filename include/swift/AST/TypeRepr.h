@@ -1054,6 +1054,7 @@ public:
 /// the concrete return type satisfies:
 ///
 /// func foo() -> some Collection { return [1,2,3] }
+/// func foo() -> <T: Collection> T { return [1,2,3] }
 /// var bar: some SignedInteger = 1
 ///
 /// It is currently illegal for this to appear in any other position.

@@ -17,6 +17,7 @@
 #include "swift/Parse/Parser.h"
 
 #include "swift/AST/ASTWalker.h"
+#include "swift/AST/GenericParamList.h"
 #include "swift/AST/Initializer.h"
 #include "swift/AST/Module.h"
 #include "swift/AST/SourceFile.h"
@@ -26,6 +27,7 @@
 #include "swift/Parse/ParsedSyntaxRecorder.h"
 #include "swift/Parse/SyntaxParsingContext.h"
 #include "swift/Syntax/SyntaxKind.h"
+#include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Support/SaveAndRestore.h"
@@ -824,8 +826,21 @@ Parser::parseFunctionSignature(Identifier SimpleName,
     // Parse the generic-params, if present.
     auto GenericParamsResult = maybeParseGenericParams();
     genericParams = GenericParamsResult.getPtrOrNull();
-    if (GenericParamsResult.hasCodeCompletion())
-      return makeParserCodeCompletionStatus();
+    Status |= GenericParamsResult;
+    if (Status.isErrorOrHasCompletion())
+      return Status;
+
+    ParserResult<TypeRepr> ResultType;
+    if (genericParams) {
+      // If we found generic-params, those params need to be parsed as
+      // `OpaqueReturnTypeRepr`s within the function's return type.
+      llvm::SmallPtrSet<GenericTypeParamDecl *, 4>
+          genericParamSet(genericParams.begin(), genericParams.end());
+      ResultType = parseDeclResultType(diag::expected_type_function_result,
+                                       &genericParamSet);
+    } else {
+      ResultType = parseDeclResultType(diag::expected_type_function_result);
+    }
 
     ParserResult<TypeRepr> ResultType =
         parseDeclResultType(diag::expected_type_function_result);

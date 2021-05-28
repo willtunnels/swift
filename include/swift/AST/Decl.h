@@ -2567,29 +2567,54 @@ public:
   }
 };
 
+/// A set of `GenericTypeDecl`s representing the named opaque types in a
+/// function's return, e.g. `T` and `U` in:
+/// 
+/// func foo() -> <T, U> (T, U)
+class OpaqueReturnTypeSet {
+  SmallVector<std::pair<Identifier, GenericTypeParamDecl *>, 4> OpaqueIDMap;
+
+public:
+  OpaqueReturnTypeSet(GenericTypeParamDecl **begin, GenericTypeParamDecl **end)
+    : OpaqueIDMap(begin, end)
+  { }
+
+  // We expect to have very few opaque types and we expect those types to have
+  // short identifiers e.g. `T` or `U`. This performs well under those
+  // conditions and scales linearly, which seems acceptable.
+  GenericTypeParamDecl *find(Identifier ID) {
+    auto It = std::find(OpaqueIDMap.begin(), OpaqueIDMap.end(), ID);
+    return It != OpaqueIDMap.end() ? It->second : nullptr;
+  }
+};
+
 /// OpaqueTypeDecl - This is a declaration of an opaque type. The opaque type
 /// is formally equivalent to its underlying type, but abstracts it away from
 /// clients of the opaque type, only exposing the type as something conforming
 /// to a given set of constraints.
 ///
-/// Currently, opaque types do not normally have an explicit spelling in source
-/// code. One is formed implicitly when a declaration is written with an opaque
-/// result type, as in:
+/// An opaque type is formed implicitly (i.e. without an explicit spelling in
+/// the source code) when a declaration is written with an opaque result type,
+/// as in:
 ///
 /// func foo() -> some SignedInteger { return 1 }
+///
+/// One can also be formed explicitly as follows:
+///
+/// func foo() -> <T: SignedInteger> T { return 1 }
 ///
 /// The declared type is a special kind of ArchetypeType representing the
 /// abstracted underlying type.
 class OpaqueTypeDecl : public GenericTypeDecl {
-  /// The original declaration that "names" the opaque type. Although a specific
-  /// opaque type cannot be explicitly named, oapque types can propagate
-  /// arbitrarily through expressions, so we need to know *which* opaque type is
-  /// propagated.
+  /// The original declaration that "names" the opaque type. A specific opaque
+  /// type might have been formed implicitly and not given an explicit name.
+  /// However, opaque types can propagate arbitrarily through expressions, so we
+  /// need to know *which* opaque type is propagated.
   ValueDecl *NamingDecl;
   
   /// The generic signature of the opaque interface to the type. This is the
-  /// outer generic signature with an added generic parameter representing the
-  /// underlying type.
+  /// outer generic signature with an added generic parameters representing the
+  /// implicit and explicit opaque types in scope.
   GenericSignature OpaqueInterfaceGenericSignature;
   
   /// The generic parameter that represents the underlying type.
