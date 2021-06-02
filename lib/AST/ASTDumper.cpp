@@ -3128,6 +3128,12 @@ public:
     PrintWithColorRAII(OS, ParenthesisColor) << ')';
   }
 
+  void visitOpaqueGenericReturnTypeRepr(OpaqueGenericReturnTypeRepr *T) {
+    printCommon("type_opaque_generic_return") << '\n';
+    printRec(T->getConstraint());
+    PrintWithColorRAII(OS, ParenthesisColor) << ')';
+  }
+
   void visitOpaqueReturnTypeRepr(OpaqueReturnTypeRepr *T) {
     printCommon("type_opaque_return");
     printRec(T->getConstraint());

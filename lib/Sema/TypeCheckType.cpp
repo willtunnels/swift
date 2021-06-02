@@ -2010,7 +2010,11 @@ NeverNullType TypeResolver::resolveType(TypeRepr *repr,
 
   case TypeReprKind::Protocol:
     return resolveProtocolType(cast<ProtocolTypeRepr>(repr), options);
-      
+
+  case TypeReprKind::OpaqueGenericReturn:
+    return resolveType(cast<OpaqueGenericReturnTypeRepr>(repr)->getConstraint(),
+                       options);
+
   case TypeReprKind::OpaqueReturn: {
     // Only valid as the return type of a function, which should be handled
     // during function decl type checking.

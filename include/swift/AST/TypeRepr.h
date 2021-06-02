@@ -1045,15 +1045,57 @@ public:
   TypeRepr *getFieldType() const { return FieldTypeAndMutable.getPointer(); }
   bool isMutable() const { return FieldTypeAndMutable.getInt(); }
 };
-  
+
+/// TypeRepr for opaque return types with named generic parameters.
+///
+/// This can occur only as the return type of a function declaration, to specify
+/// that the concrete return type should be abstracted from callers, given a set
+/// of generic constraints that the concrete return type satisfies:
+///
+/// func foo() -> <P: Collection, Q: Collection> (P, Q) {
+///   return ([1,2,3], [1,2,3])
+/// }
+///
+/// Since named opaque types and anonymous opaque types (written like "some P")
+/// can appear in the same declaration, an `OpaqueGenericReturnTypeRepr` might
+/// wrap one or more `OpaqueReturnTypeRepr`s.
+class OpaqueGenericReturnTypeRepr : public TypeRepr {
+  TypeRepr *Constraint;
+  GenericParamList *GenericParams;
+
+public:
+  OpaqueGenericReturnTypeRepr(TypeRepr *Constraint,
+                              GenericParamList *GenericParams)
+      : TypeRepr(TypeReprKind::OpaqueGenericReturn), Constraint(Constraint),
+        GenericParams(GenericParams) {}
+
+  TypeRepr *getConstraint() const { return Constraint; }
+  GenericParamList *getGenericParams() const { return GenericParams; }
+
+  static bool classof(const TypeRepr *T) {
+    return T->getKind() == TypeReprKind::OpaqueGenericReturn;
+  }
+  static bool classof(const OpaqueGenericReturnTypeRepr *T) { return true; }
+
+private:
+  SourceLoc getStartLocImpl() const;
+  SourceLoc getEndLocImpl() const;
+  SourceLoc getLocImpl() const;
+  void printImpl(ASTPrinter &Printer, const PrintOptions &Opts) const;
+  friend class TypeRepr;
+};
+
 /// TypeRepr for opaque return types.
 ///
-/// This can occur in the return position of a function declaration, or the
+/// This can occur in the return type of a function declaration, or the
 /// top-level type of a property, to specify that the concrete return type
 /// should be abstracted from callers, given a set of generic constraints that
 /// the concrete return type satisfies:
 ///
-/// func foo() -> some Collection { return [1,2,3] }
+/// func foo() -> (some Collection, some Collection) {
+///   return ([1,2,3], [1,2,3])
+/// }
+///
 /// var bar: some SignedInteger = 1
 ///
 /// It is currently illegal for this to appear in any other position.
@@ -1228,6 +1270,8 @@ inline bool TypeRepr::isSimple() const {
   case TypeReprKind::Owned:
   case TypeReprKind::Placeholder:
     return true;
+  case TypeReprKind::OpaqueGenericReturn:
+    return cast<OpaqueGenericReturnTypeRepr>(this)->getConstraint()->isSimple();
   }
   llvm_unreachable("bad TypeRepr kind");
 }
