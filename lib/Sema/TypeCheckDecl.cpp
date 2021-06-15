@@ -2047,7 +2047,7 @@ static Type buildAddressorResultType(AccessorDecl *addressor,
 }
 
 Type
-ResultTypeRequest::evaluate(Evaluator &evaluator, ValueDecl *decl) const {
+ResultTypeRequest::doIt(Evaluator &evaluator, ValueDecl *decl) const {
   auto &ctx = decl->getASTContext();
 
   // Accessors always inherit their result type from their storage.
@@ -2104,6 +2104,19 @@ ResultTypeRequest::evaluate(Evaluator &evaluator, ValueDecl *decl) const {
   return TypeResolution::forInterface(dc, options, /*unboundTyOpener*/ nullptr,
                                       /*placeholderHandler*/ nullptr)
       .resolveType(resultTyRepr);
+}
+
+Type
+ResultTypeRequest::evaluate(Evaluator &evaluator, ValueDecl *decl) const {
+  llvm::outs() << "BEGIN ResultTypeRequest::evaluate\n";
+
+  Type ty = doIt(evaluator, decl);
+
+  llvm::outs() << "ResultTypeRequest::evaluate: " << ty << " => ";
+  ty.printKindRec();
+  llvm::outs() << '\n';
+
+  return ty;
 }
 
 ParamSpecifier
@@ -2247,6 +2260,8 @@ Type
 InterfaceTypeRequest::evaluate(Evaluator &eval, ValueDecl *D) const {
   auto &Context = D->getASTContext();
 
+  llvm::outs() << "BEGIN InterfaceTypeRequest::evaluate: " << D->getName() << '\n';
+
   TypeChecker::checkForForbiddenPrefix(Context, D->getBaseName());
 
   switch (D->getKind()) {
@@ -2372,6 +2387,9 @@ InterfaceTypeRequest::evaluate(Evaluator &eval, ValueDecl *D) const {
     Type resultTy;
     if (auto fn = dyn_cast<FuncDecl>(D)) {
       resultTy = fn->getResultInterfaceType();
+      llvm::outs() << "resultTy = ";
+      resultTy.printKindRec();
+      llvm::outs() << '\n';
     } else if (auto ctor = dyn_cast<ConstructorDecl>(D)) {
       resultTy = ctor->getResultInterfaceType();
     } else {

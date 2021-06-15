@@ -231,6 +231,8 @@ public:
     return walk(walker);
   }
 
+  void printKindRec();
+
   /// Look through the given type and its children to find a type for
   /// which the given predicate returns true.
   ///

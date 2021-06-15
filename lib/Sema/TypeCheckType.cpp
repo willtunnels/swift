@@ -1065,10 +1065,15 @@ static Type resolveTypeDecl(TypeDecl *typeDecl, DeclContext *foundDC,
                             TypeResolution resolution,
                             GenericParamList *silParams,
                             ComponentIdentTypeRepr *comp) {
+  llvm::outs() << "BEGIN resolveTypeDecl\n";
+
   // Resolve the type declaration to a specific type. How this occurs
   // depends on the current context and where the type was found.
   Type type = resolution.resolveTypeInContext(typeDecl, foundDC,
                                               isa<GenericIdentTypeRepr>(comp));
+  llvm::outs() << "resolveTypeDecl: " << type << " => ";
+  type.printKindRec();
+  llvm::outs() << '\n';
 
   if (type->hasError() && foundDC &&
       (isa<AssociatedTypeDecl>(typeDecl) || isa<TypeAliasDecl>(typeDecl))) {
@@ -1631,13 +1636,21 @@ static Type
 resolveIdentTypeComponent(TypeResolution resolution,
                           GenericParamList *silParams,
                           ArrayRef<ComponentIdentTypeRepr *> components) {
+  llvm::outs() << "BEGIN resolveIdentTypeComponent\n";
+
   auto comp = components.back();
 
   // The first component uses unqualified lookup.
   const auto parentComps = components.drop_back();
   if (parentComps.empty()) {
-    return resolveTopLevelIdentTypeComponent(resolution, silParams,
-                                             comp);
+    auto ty =
+      resolveTopLevelIdentTypeComponent(resolution, silParams,
+                                        comp);
+    llvm::outs() << "resolveIdentTypeComponent: " << ty << " => ";
+    ty.printKindRec();
+    llvm::outs() << '\n';
+
+    return ty;
   }
 
   // All remaining components use qualified lookup.
@@ -1903,11 +1916,17 @@ Type ResolveTypeRequest::evaluate(Evaluator &evaluator,
                                   const TypeResolution *resolution,
                                   TypeRepr *TyR,
                                   GenericParamList *silParams) const {
+  llvm::outs() << "BEGIN ResolveTypeRequest::evaluate\n";
+
   const auto options = resolution->getOptions();
   auto &ctx = resolution->getASTContext();
   auto result =
       TypeResolver(*resolution, silParams)
           .resolveType(TyR, resolution->getOptions());
+
+  llvm::outs() << "ResolveTypeRequest::evaluate: " << result.get() << " => ";
+  result.get().printKindRec();
+  llvm::outs() << '\n';
 
   // If we resolved down to an error, make sure to mark the typeRepr as invalid
   // so we don't produce a redundant diagnostic.

@@ -1689,6 +1689,7 @@ private:
   friend SimpleRequest;
 
   // Evaluation.
+  Type doIt(Evaluator &evaluator, ValueDecl *decl) const;
   Type evaluate(Evaluator &evaluator, ValueDecl *decl) const;
 
 public:

@@ -5044,6 +5044,21 @@ case TypeKind::Id:
   llvm_unreachable("Unhandled type in transformation");
 }
 
+void Type::printKindRec() {
+  struct Walker : TypeWalker {
+  public:
+    Action walkToTypePre(Type ty) override {
+      const char* s;
+      switch (ty.getPointer()->getKind()) {
+      #define TYPE(id, parent) case TypeKind::id: s = #id " "; break;
+      #include "swift/AST/TypeNodes.def"
+      }
+      llvm::outs() << s;
+      return Action::Continue;
+    }
+  };
+  walk(Walker());
+}
 
 bool Type::findIf(llvm::function_ref<bool(Type)> pred) const {
   class Walker : public TypeWalker {

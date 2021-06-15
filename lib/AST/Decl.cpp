@@ -3002,12 +3002,18 @@ bool ValueDecl::isRecursiveValidation() const {
 }
 
 Type ValueDecl::getInterfaceType() const {
+  llvm::outs() << "BEGIN ValueDecl::getInterfaceType\n";
   auto &ctx = getASTContext();
-  if (auto type =
-          evaluateOrDefault(ctx.evaluator,
-                            InterfaceTypeRequest{const_cast<ValueDecl *>(this)},
-                            Type()))
+  auto type =
+    evaluateOrDefault(ctx.evaluator,
+                      InterfaceTypeRequest{const_cast<ValueDecl *>(this)},
+                      Type());
+  if (type) {
+    llvm::outs() << "ValueDecl::getInterfaceType: " << type << " => ";
+    type.printKindRec();
+    llvm::outs() << '\n';
     return type;
+  }
   return ErrorType::get(ctx);
 }
 
