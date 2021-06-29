@@ -3822,7 +3822,6 @@ bool ConstraintSystem::generateConstraints(
     if (Type convertType = target.getExprConversionType()) {
       // Determine whether we know more about the contextual type.
       ContextualTypePurpose ctp = target.getExprContextualTypePurpose();
-      bool isOpaqueReturnType = target.infersOpaqueReturnType();
       auto *convertTypeLocator =
           getConstraintLocator(expr, LocatorPathElt::ContextualType(ctp));
 
@@ -3862,8 +3861,7 @@ bool ConstraintSystem::generateConstraints(
         });
       }
 
-      addContextualConversionConstraint(expr, convertType, ctp,
-                                        isOpaqueReturnType);
+      addContextualConversionConstraint(expr, convertType, ctp);
     }
 
     // For an initialization target, generate constraints for the pattern.

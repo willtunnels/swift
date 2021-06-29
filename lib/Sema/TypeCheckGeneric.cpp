@@ -135,10 +135,10 @@ OpaqueResultTypeRequest::evaluate(Evaluator &evaluator,
     {
       llvm::raw_string_ostream out(result);
       out << "associatedtype " << placeholder << ": ";
-      // FIXME: to produce the right associate type for the replacement in
-      // general, we would need to recurse into the type repr and replace every
-      // `OpaqueReturnType` with its 'base'. Things get trickier when we allow
-      // named opaque return types.
+      // FIXME [OPAQUE SUPPORT]: to produce the right associate type for the
+      // replacement in general, we would need to recurse into the type repr and
+      // replace every `OpaqueReturnType` with its 'base'. Things get trickier
+      // when we allow named opaque return types.
       if (isa<OpaqueReturnTypeRepr>(repr)) {
         cast<OpaqueReturnTypeRepr>(repr)->getConstraint()->print(out);
       } else {
