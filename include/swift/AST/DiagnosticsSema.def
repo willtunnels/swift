@@ -1862,6 +1862,10 @@ ERROR(opaque_type_invalid_constraint,none,
 ERROR(inferred_opaque_type,none,
       "property definition has inferred type %0, involving the 'some' "
       "return type of another declaration", (Type))
+ERROR(more_than_one_opaque_subtype,none,
+      "%0 contains multiple 'opaque' types, but only one 'opaque' type is "
+      "supported (this restriction will be lifted in the near future)",
+      (TypeRepr*))
 
 // Extensions
 ERROR(non_nominal_extension,none,

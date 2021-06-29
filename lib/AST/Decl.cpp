@@ -2810,7 +2810,7 @@ void ValueDecl::setOverriddenDecls(ArrayRef<ValueDecl *> overridden) {
   request.cacheResult(overriddenVec);
 }
 
-OpaqueReturnTypeRepr *ValueDecl::getOpaqueResultTypeRepr() const {
+TypeRepr *ValueDecl::getOpaqueResultTypeRepr() const {
   TypeRepr *returnRepr = nullptr;
   if (auto *VD = dyn_cast<VarDecl>(this)) {
     if (auto *P = VD->getParentPattern()) {
@@ -2835,7 +2835,14 @@ OpaqueReturnTypeRepr *ValueDecl::getOpaqueResultTypeRepr() const {
     returnRepr = SD->getElementTypeRepr();
   }
 
-  return dyn_cast_or_null<OpaqueReturnTypeRepr>(returnRepr);
+  // TODO [OPAQUE SUPPORT]: once we want to actually perform semantic analysis
+  // on `NamedOpaqueReturnTypeRepr`s, we will need to also check `||
+  // isa<NamedOpaqueReturnTypeRepr>` here.
+  return returnRepr && returnRepr->findIf([](TypeRepr *ty) {
+    return isa<OpaqueReturnTypeRepr>(ty);
+  })
+             ? returnRepr
+             : nullptr;
 }
 
 OpaqueTypeDecl *ValueDecl::getOpaqueResultTypeDecl() const {
@@ -7397,16 +7404,16 @@ void AbstractFunctionDecl::setParameters(ParameterList *BodyParams) {
 }
 
 OpaqueTypeDecl::OpaqueTypeDecl(ValueDecl *NamingDecl,
-                               GenericParamList *GenericParams,
-                               DeclContext *DC,
+                               GenericParamList *GenericParams, DeclContext *DC,
                                GenericSignature OpaqueInterfaceGenericSignature,
+                               OpaqueReturnTypeRepr *UnderlyingInterfaceRepr,
                                GenericTypeParamType *UnderlyingInterfaceType)
-  : GenericTypeDecl(DeclKind::OpaqueType, DC, Identifier(), SourceLoc(), {},
-                    GenericParams),
-    NamingDecl(NamingDecl),
-    OpaqueInterfaceGenericSignature(OpaqueInterfaceGenericSignature),
-    UnderlyingInterfaceType(UnderlyingInterfaceType)
-{
+    : GenericTypeDecl(DeclKind::OpaqueType, DC, Identifier(), SourceLoc(), {},
+                      GenericParams),
+      NamingDecl(NamingDecl),
+      OpaqueInterfaceGenericSignature(OpaqueInterfaceGenericSignature),
+      UnderlyingInterfaceRepr(UnderlyingInterfaceRepr),
+      UnderlyingInterfaceType(UnderlyingInterfaceType) {
   // Always implicit.
   setImplicit();
 }
@@ -7424,6 +7431,15 @@ bool OpaqueTypeDecl::isOpaqueReturnTypeOfFunction(
   }
 
   return false;
+}
+
+unsigned OpaqueTypeDecl::getAnonymousOpaqueParamOrdinal(
+    OpaqueReturnTypeRepr *repr) const {
+  // TODO [OPAQUE SUPPORT]: we will need to generalize here when we allow
+  // multiple "some" types.
+  assert(UnderlyingInterfaceRepr &&
+         "can't do opaque param lookup without underlying interface repr");
+  return repr == UnderlyingInterfaceRepr ? 0 : -1;
 }
 
 Identifier OpaqueTypeDecl::getOpaqueReturnTypeIdentifier() const {
