@@ -5699,6 +5699,28 @@ Type ConstraintSystem::getVarType(const VarDecl *var) {
   });
 }
 
+void ConstraintSystem::setContextualType(ASTNode node, TypeLoc T,
+                                         ContextualTypePurpose purpose) {
+  assert(bool(node) && "Expected non-null expression!");
+  assert(contextualTypes.count(node) == 0 &&
+         "Already set this contextual type");
+
+  // Open any opaque archetypes
+  auto contextualType = T.getType();
+  if (contextualType->hasOpaqueArchetype()) {
+    T.setType(contextualType.transform([&](Type type) -> Type {
+      if (type->is<OpaqueTypeArchetypeType>()) {
+        auto *locator =
+            getConstraintLocator(node, LocatorPathElt::ContextualType(purpose));
+        return openOpaqueType(type, locator);
+      }
+      return type;
+    }));
+  }
+
+  contextualTypes[node] = {T, purpose};
+}
+
 bool ConstraintSystem::isReadOnlyKeyPathComponent(
     const AbstractStorageDecl *storage, SourceLoc referenceLoc) {
   // See whether key paths can store to this component. (Key paths don't

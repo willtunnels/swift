@@ -3013,12 +3013,7 @@ public:
   }
 
   void setContextualType(ASTNode node, TypeLoc T,
-                         ContextualTypePurpose purpose) {
-    assert(bool(node) && "Expected non-null expression!");
-    assert(contextualTypes.count(node) == 0 &&
-           "Already set this contextual type");
-    contextualTypes[node] = {T, purpose};
-  }
+                         ContextualTypePurpose purpose);
 
   Optional<ContextualTypeInfo> getContextualTypeInfo(ASTNode node) const {
     auto known = contextualTypes.find(node);

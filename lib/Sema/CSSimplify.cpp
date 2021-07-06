@@ -11971,17 +11971,8 @@ void ConstraintSystem::addContextualConversionConstraint(
   case CTP_Initialization: {
     if (conversionType->is<OpaqueTypeArchetypeType>())
       constraintKind = ConstraintKind::Bind;
-    if (conversionType->hasOpaqueArchetype()) {
-      conversionType = conversionType.transform([&](Type type) -> Type {
-        if (type->is<OpaqueTypeArchetypeType>()) {
-          // TODO [OPAQUE SUPPORT]: better constraint locator
-          auto *locator = getConstraintLocator(
-              expr, LocatorPathElt::ContextualType(purpose));
-          return openOpaqueType(type, locator);
-        }
-        return type;
-      });
-    }
+    // Alternatively, we might have a nested opaque archetype, e.g. `(some P)?`.
+    // In that case, we want `ConstraintKind::Conversion`.
     break;
   }
   case CTP_CallArgument:
