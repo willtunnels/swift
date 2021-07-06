@@ -4144,7 +4144,7 @@ OpaqueTypeArchetypeType::get(OpaqueTypeDecl *Decl, unsigned ordinal,
 
   auto layout = signature->getLayoutConstraint(opaqueParamType);
   auto superclass = signature->getSuperclassBound(opaqueParamType);
-#if !DO_IT_CORRECTLY
+  #if !DO_IT_CORRECTLY
     // Ad-hoc substitute the generic parameters of the superclass.
     // If we correctly applied the substitutions to the generic signature
     // constraints above, this would be unnecessary.
@@ -4152,35 +4152,36 @@ OpaqueTypeArchetypeType::get(OpaqueTypeDecl *Decl, unsigned ordinal,
       superclass = superclass.subst(Substitutions);
     }
   #endif
-    const auto protos = signature->getRequiredProtocols(opaqueParamType);
+  const auto protos = signature->getRequiredProtocols(opaqueParamType);
 
-    auto mem = ctx.Allocate(
-        OpaqueTypeArchetypeType::totalSizeToAlloc<ProtocolDecl *, Type,
-                                                  LayoutConstraint>(
-            protos.size(), superclass ? 1 : 0, layout ? 1 : 0),
-        alignof(OpaqueTypeArchetypeType), arena);
+  auto mem = ctx.Allocate(
+      OpaqueTypeArchetypeType::totalSizeToAlloc<ProtocolDecl *, Type, LayoutConstraint>(
+        protos.size(), superclass ? 1 : 0, layout ? 1 : 0),
+        alignof(OpaqueTypeArchetypeType),
+        arena);
 
-    auto newOpaque = ::new (mem)
-        OpaqueTypeArchetypeType(Decl, Substitutions, properties,
-                                opaqueParamType, protos, superclass, layout);
+  auto newOpaque = ::new (mem) OpaqueTypeArchetypeType(Decl, Substitutions,
+                                                    properties,
+                                                    opaqueParamType,
+                                                    protos, superclass, layout);
 
-    // Create a generic environment and bind the opaque archetype to the
-    // opaque interface type from the decl's signature.
-    auto *builder = signature->getGenericSignatureBuilder();
-    auto *env = GenericEnvironment::getIncomplete(signature, builder);
-    env->addMapping(GenericParamKey(opaqueParamType), newOpaque);
-    newOpaque->Environment = env;
+  // Create a generic environment and bind the opaque archetype to the
+  // opaque interface type from the decl's signature.
+  auto *builder = signature->getGenericSignatureBuilder();
+  auto *env = GenericEnvironment::getIncomplete(signature, builder);
+  env->addMapping(GenericParamKey(opaqueParamType), newOpaque);
+  newOpaque->Environment = env;
 
-    // Look up the insertion point in the folding set again in case something
-    // invalidated it above.
-    {
-      void *insertPos;
-      auto existing = set.FindNodeOrInsertPos(id, insertPos);
-      (void)existing;
-      assert(!existing && "race to create opaque archetype?!");
-      set.InsertNode(newOpaque, insertPos);
+  // Look up the insertion point in the folding set again in case something
+  // invalidated it above.
+  {
+    void *insertPos;
+    auto existing = set.FindNodeOrInsertPos(id, insertPos);
+    (void)existing;
+    assert(!existing && "race to create opaque archetype?!");
+    set.InsertNode(newOpaque, insertPos);
   }
-  
+
   return newOpaque;
 }
 
