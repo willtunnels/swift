@@ -185,8 +185,7 @@ OpaqueResultTypeRequest::evaluate(Evaluator &evaluator,
 
   auto opaqueReprs = collectOpaqueReturnTypeReprs(repr);
   if (opaqueReprs.size() > 1) {
-    ctx.Diags.diagnose(repr->getLoc(), diag::more_than_one_opaque_subtype,
-                       repr);
+    ctx.Diags.diagnose(repr->getLoc(), diag::more_than_one_opaque_type, repr);
     return nullptr;
   }
 
@@ -194,6 +193,25 @@ OpaqueResultTypeRequest::evaluate(Evaluator &evaluator,
   // but *very* soon we will allow more than one such type.
   for (unsigned i = 0; i < opaqueReprs.size(); ++i) {
     auto *currentRepr = opaqueReprs[i];
+
+    // Usually, we resolve the opaque constraint and bail if it isn't a class or
+    // existential type (see below). However, in this case we know we will fail,
+    // so we can bail early and provide a better diagnostic.
+    if (auto *optionalRepr =
+            dyn_cast<OptionalTypeRepr>(currentRepr->getConstraint())) {
+      std::string buf;
+      llvm::raw_string_ostream stream(buf);
+      stream << "(some " << optionalRepr->getBase() << ")?";
+
+      ctx.Diags.diagnose(currentRepr->getLoc(),
+                         diag::opaque_type_invalid_constraint);
+      ctx.Diags
+          .diagnose(currentRepr->getLoc(), diag::opaque_of_optional_rewrite)
+          .fixItReplaceChars(currentRepr->getStartLoc(),
+                             currentRepr->getEndLoc(), stream.str());
+      return nullptr;
+    }
+
     auto *paramType = GenericTypeParamType::get(opaqueSignatureDepth, i, ctx);
     genericParamTypes.push_back(paramType);
 

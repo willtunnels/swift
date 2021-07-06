@@ -2632,8 +2632,8 @@ public:
 /// func foo() -> some SignedInteger { return 1 }
 ///
 /// The declared type uses a special kind of archetype type to represent
-/// abstracted sub-types, e.g. `(some P, some Q)` becomes `((opaque archetype
-/// 0), (opaque archetype 1))`.
+/// abstracted (nested) types, e.g. `(some P, some Q)` becomes `((opaque
+/// archetype 0), (opaque archetype 1))`.
 class OpaqueTypeDecl : public GenericTypeDecl {
   /// The original declaration that "names" the opaque type. Although a specific
   /// opaque type cannot be explicitly named, oapque types can propagate
