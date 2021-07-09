@@ -2684,6 +2684,7 @@ public:
       Implementation->mapTypeIntoContext(OpaqueDecl->getDeclaredInterfaceType());
     Type underlyingType = Candidates.front().second;
     
+    // TODO [OPAQUE SUPPORT]: multiple opaque types
     bool mismatch = false;
     for (auto otherCandidate : llvm::makeArrayRef(Candidates).slice(1)) {
       // Disregard tautological candidates.
@@ -2747,6 +2748,7 @@ public:
       Candidates.push_back(std::make_pair(underlyingToOpaque->getSubExpr(),
                                   underlyingToOpaque->getSubExpr()->getType()));
     }
+    //return std::make_pair(true, E);
     return std::make_pair(false, E);
   }
 

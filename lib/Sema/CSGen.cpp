@@ -3819,7 +3819,11 @@ bool ConstraintSystem::generateConstraints(
 
     // If there is a type that we're expected to convert to, add the conversion
     // constraint.
-    if (Type convertType = getContextualType(target.getAsExpr())) {
+    if (Type convertType = target.getExprConversionType()) {
+      // FIXME [OPAQUE SUPPORT]
+      if (Type contextType = getContextualType(target.getAsExpr()))
+        convertType = contextType;
+
       // Determine whether we know more about the contextual type.
       ContextualTypePurpose ctp = target.getExprContextualTypePurpose();
       auto *convertTypeLocator =

@@ -5707,9 +5707,10 @@ void ConstraintSystem::setContextualType(ASTNode node, TypeLoc T,
 
   // Open any opaque archetypes
   auto contextualType = T.getType();
-  if (contextualType->hasOpaqueArchetype()) {
+  if (contextualType && contextualType->hasOpaqueArchetype()) {
     T.setType(contextualType.transform([&](Type type) -> Type {
       if (type->is<OpaqueTypeArchetypeType>()) {
+        // TODO [OPAQUE SUPPORT]: perhaps we could provide a better locator here?
         auto *locator =
             getConstraintLocator(node, LocatorPathElt::ContextualType(purpose));
         return openOpaqueType(type, locator);
