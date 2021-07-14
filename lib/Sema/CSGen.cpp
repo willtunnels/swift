@@ -3771,11 +3771,13 @@ generateForEachStmtConstraints(
     SolutionApplicationTarget whereTarget(
         forEachStmtInfo.whereExpr, dc, CTP_Condition, boolType,
         /*isDiscarded=*/false);
-    if (cs.generateConstraints(whereTarget, FreeTypeVariableBinding::Disallow))
-      return None;
 
+    // Needed for constraint generation
     cs.setContextualType(forEachStmtInfo.whereExpr,
                          TypeLoc::withoutLoc(boolType), CTP_Condition);
+
+    if (cs.generateConstraints(whereTarget, FreeTypeVariableBinding::Disallow))
+      return None;
 
     forEachStmtInfo.whereExpr = whereTarget.getAsExpr();
   }
@@ -3794,23 +3796,6 @@ bool ConstraintSystem::generateConstraints(
     SolutionApplicationTarget &target,
     FreeTypeVariableBinding allowFreeTypeVariables) {
   if (Expr *expr = target.getAsExpr()) {
-    // If the target requires an optional of some type, form a new appropriate
-    // type variable and update the target's type with an optional of that
-    // type variable.
-    if (target.isOptionalSomePatternInit()) {
-      assert(!target.getExprContextualType() &&
-             "some pattern cannot have contextual type pre-configured");
-      auto *convertTypeLocator = getConstraintLocator(
-          expr, LocatorPathElt::ContextualType(
-                    target.getExprContextualTypePurpose()));
-      Type var = createTypeVariable(convertTypeLocator, TVO_CanBindToNoEscape);
-      target.setExprConversionType(TypeChecker::getOptionalType(expr->getLoc(), var));
-    }
-
-    expr = buildTypeErasedExpr(expr, target.getDeclContext(),
-                               target.getExprContextualType(),
-                               target.getExprContextualTypePurpose());
-
     // Generate constraints for the main system.
     expr = generateConstraints(expr, target.getDeclContext());
     if (!expr)
@@ -3819,53 +3804,53 @@ bool ConstraintSystem::generateConstraints(
 
     // If there is a type that we're expected to convert to, add the conversion
     // constraint.
-    if (Type convertType = target.getExprConversionType()) {
-      // FIXME [OPAQUE SUPPORT]
-      if (Type contextType = getContextualType(target.getAsExpr()))
-        convertType = contextType;
-
+    if (Type convertType = getContextualType(target.getAsExpr())) {
       // Determine whether we know more about the contextual type.
       ContextualTypePurpose ctp = target.getExprContextualTypePurpose();
-      auto *convertTypeLocator =
-          getConstraintLocator(expr, LocatorPathElt::ContextualType(ctp));
+      // auto *convertTypeLocator =
+      //    getConstraintLocator(expr, LocatorPathElt::ContextualType(ctp));
 
-      auto getLocator = [&](Type ty) -> ConstraintLocator * {
-        // If we have a placeholder originating from a PlaceholderTypeRepr,
-        // tack that on to the locator.
-        if (auto *placeholderTy = ty->getAs<PlaceholderType>())
-          if (auto *placeholderRepr = placeholderTy->getOriginator()
-                                          .dyn_cast<PlaceholderTypeRepr *>())
-            return getConstraintLocator(
-                convertTypeLocator,
-                LocatorPathElt::PlaceholderType(placeholderRepr));
-        return convertTypeLocator;
-      };
+      // FIXME [OPAQUE SUPPORT]: most of this got moved to `setContextualType`,
+      // but `UnresolvedTypes` aren't handled there, so they are broken now!!!
+
+      // auto getLocator = [&](Type ty) -> ConstraintLocator * {
+      //  // If we have a placeholder originating from a PlaceholderTypeRepr,
+      //  // tack that on to the locator.
+      //  if (auto *placeholderTy = ty->getAs<PlaceholderType>())
+      //    if (auto *placeholderRepr = placeholderTy->getOriginator()
+      //                                    .dyn_cast<PlaceholderTypeRepr *>())
+      //      return getConstraintLocator(
+      //          convertTypeLocator,
+      //          LocatorPathElt::PlaceholderType(placeholderRepr));
+      //  return convertTypeLocator;
+      //};
 
       // Substitute type variables in for placeholder types (and unresolved
       // types, if allowed).
-      if (allowFreeTypeVariables == FreeTypeVariableBinding::UnresolvedType) {
-        convertType = convertType.transform([&](Type type) -> Type {
-          if (type->is<UnresolvedType>() || type->is<PlaceholderType>()) {
-            return createTypeVariable(getLocator(type),
-                                      TVO_CanBindToNoEscape |
-                                          TVO_PrefersSubtypeBinding |
-                                          TVO_CanBindToHole);
-          }
-          return type;
-        });
-      } else {
-        convertType = convertType.transform([&](Type type) -> Type {
-          if (type->is<PlaceholderType>()) {
-            return createTypeVariable(getLocator(type),
-                                      TVO_CanBindToNoEscape |
-                                          TVO_PrefersSubtypeBinding |
-                                          TVO_CanBindToHole);
-          }
-          return type;
-        });
-      }
+      // if (allowFreeTypeVariables == FreeTypeVariableBinding::UnresolvedType)
+      // {
+      //  convertType = convertType.transform([&](Type type) -> Type {
+      //    if (type->is<UnresolvedType>() || type->is<PlaceholderType>()) {
+      //      return createTypeVariable(getLocator(type),
+      //                                TVO_CanBindToNoEscape |
+      //                                    TVO_PrefersSubtypeBinding |
+      //                                    TVO_CanBindToHole);
+      //    }
+      //    return type;
+      //  });
+      //} else {
+      //  convertType = convertType.transform([&](Type type) -> Type {
+      //    if (type->is<PlaceholderType>()) {
+      //      return createTypeVariable(getLocator(type),
+      //                                TVO_CanBindToNoEscape |
+      //                                    TVO_PrefersSubtypeBinding |
+      //                                    TVO_CanBindToHole);
+      //    }
+      //    return type;
+      //  });
+      //}
 
-      addContextualConversionConstraint(expr, convertType, ctp);
+      addContextualConversionConstraint(expr, ctp);
     }
 
     // For an initialization target, generate constraints for the pattern.

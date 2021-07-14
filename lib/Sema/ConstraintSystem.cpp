@@ -5705,20 +5705,28 @@ void ConstraintSystem::setContextualType(ASTNode node, TypeLoc T,
   assert(contextualTypes.count(node) == 0 &&
          "Already set this contextual type");
 
-  // Open any opaque archetypes
   auto contextualType = T.getType();
-  if (contextualType && contextualType->hasOpaqueArchetype()) {
-    T.setType(contextualType.transform([&](Type type) -> Type {
+  if (contextualType) {
+    contextualType = contextualType.transform([&](Type type) -> Type {
+      // TODO [OPAQUE SUPPORT]: perhaps we could provide better locators here?
+      auto *locator =
+          getConstraintLocator(node, LocatorPathElt::ContextualType(purpose));
+
       if (type->is<OpaqueTypeArchetypeType>()) {
-        // TODO [OPAQUE SUPPORT]: perhaps we could provide a better locator here?
-        auto *locator =
-            getConstraintLocator(node, LocatorPathElt::ContextualType(purpose));
         return openOpaqueType(type, locator);
       }
+
+      if (type->is<PlaceholderType>()) {
+        return createTypeVariable(locator, TVO_CanBindToNoEscape |
+                                               TVO_PrefersSubtypeBinding |
+                                               TVO_CanBindToHole);
+      }
+
       return type;
-    }));
+    });
   }
 
+  T.setType(contextualType);
   contextualTypes[node] = {T, purpose};
 }
 

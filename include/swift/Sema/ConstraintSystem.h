@@ -3012,6 +3012,11 @@ public:
     return E;
   }
 
+  /// Register `node`'s contextual type, applying the necessary transformations
+  /// for the contextual type to be used in solving (e.g. opening opaque types
+  /// and creating type variables for placeholders).
+  ///
+  /// May only be called once per AST node.
   void setContextualType(ASTNode node, TypeLoc T,
                          ContextualTypePurpose purpose);
 
@@ -3022,6 +3027,7 @@ public:
     return known->second;
   }
 
+  /// Get the transformed contextual type created by `setContextualType`.
   Type getContextualType(ASTNode node) const {
     auto result = getContextualTypeInfo(node);
     if (result)
@@ -3288,8 +3294,9 @@ public:
   void addConstraint(Requirement req, ConstraintLocatorBuilder locator,
                      bool isFavored = false);
 
-  /// Add the appropriate constraint for a contextual conversion.
-  void addContextualConversionConstraint(Expr *expr, Type conversionType,
+  /// Add the appropriate constraint for a contextual conversion. Uses
+  /// `ConstraintSystem::getContextualType` to determine the conversion type.
+  void addContextualConversionConstraint(Expr *expr,
                                          ContextualTypePurpose purpose);
 
   /// Convenience function to pass an \c ArrayRef to \c addJoinConstraint

@@ -11959,7 +11959,8 @@ void ConstraintSystem::addConstraint(ConstraintKind kind, Type first,
 }
 
 void ConstraintSystem::addContextualConversionConstraint(
-    Expr *expr, Type conversionType, ContextualTypePurpose purpose) {
+    Expr *expr, ContextualTypePurpose purpose) {
+  auto conversionType = getContextualType(expr);
   if (conversionType.isNull())
     return;
 

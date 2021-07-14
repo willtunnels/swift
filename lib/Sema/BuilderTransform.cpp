@@ -918,13 +918,19 @@ protected:
     }
 
     if (cs) {
-     SolutionApplicationTarget target(
-         throwStmt->getSubExpr(), dc, CTP_ThrowStmt, exnType,
-         /*isDiscarded=*/false);
-     if (cs->generateConstraints(target, FreeTypeVariableBinding::Disallow))
-       hadError = true;
+      SolutionApplicationTarget target(throwStmt->getSubExpr(), dc,
+                                       CTP_ThrowStmt, exnType,
+                                       /*isDiscarded=*/false);
 
-     cs->setSolutionApplicationTarget(throwStmt, target);
+      // Needed for constraint generation
+      cs->setContextualType(target.getAsExpr(),
+                            target.getExprContextualTypeLoc(),
+                            target.getExprContextualTypePurpose());
+
+      if (cs->generateConstraints(target, FreeTypeVariableBinding::Disallow))
+        hadError = true;
+
+      cs->setSolutionApplicationTarget(throwStmt, target);
    }
 
     return nullptr;
@@ -1636,7 +1642,8 @@ Optional<BraceStmt *> TypeChecker::applyResultBuilderBodyTransform(
   ConstraintKind resultConstraintKind = ConstraintKind::Conversion;
   if (auto opaque = resultContextType->getAs<OpaqueTypeArchetypeType>()) {
     if (opaque->getDecl()->isOpaqueReturnTypeOfFunction(func)) {
-      resultConstraintKind = ConstraintKind::OpaqueUnderlyingType;
+      // FIXME [OPAQUE SUPPORT] should this be `Bind`?
+      resultConstraintKind = ConstraintKind::Equal;
     }
   }
 
@@ -1805,9 +1812,6 @@ ConstraintSystem::matchResultBuilder(
     }
   }
 
-  Type transformedType = getType(applied->returnExpr);
-  assert(transformedType && "Missing type");
-
   // Record the transformation.
   assert(std::find_if(
       resultBuilderTransformed.begin(),
@@ -1830,8 +1834,10 @@ ConstraintSystem::matchResultBuilder(
   }
 
   // Bind the body result type to the type of the transformed expression.
-  addConstraint(bodyResultConstraintKind, transformedType, bodyResultType,
-                locator);
+  setContextualType(applied->returnExpr, TypeLoc::withoutLoc(bodyResultType),
+                    CTP_ReturnStmt);
+  addContextualConversionConstraint(applied->returnExpr, CTP_ReturnStmt);
+
   return getTypeMatchSuccess();
 }
 

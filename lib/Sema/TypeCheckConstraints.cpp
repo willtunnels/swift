@@ -359,8 +359,32 @@ TypeChecker::typeCheckExpression(
 
   ConstraintSystem cs(dc, csOptions);
 
-  // Tell the constraint system what the contextual type is.  This informs
-  // diagnostics and is a hint for various performance optimizations.
+  // If the target requires an optional of some type, form a new appropriate
+  // type variable and update the target's type with an optional of that
+  // type variable.
+  if (target.isOptionalSomePatternInit()) {
+    assert(!target.getExprContextualType() &&
+           "some pattern cannot have contextual type pre-configured");
+    auto *convertTypeLocator = cs.getConstraintLocator(
+        expr,
+        LocatorPathElt::ContextualType(target.getExprContextualTypePurpose()));
+    Type var = cs.createTypeVariable(convertTypeLocator, TVO_CanBindToNoEscape);
+
+    // TODO [OPAQUE SUPPORT]: we could probably get rid of expr conversion
+    // type, now that most things depend on `getContextualType`.
+    target.setExprConversionType(
+        TypeChecker::getOptionalType(expr->getLoc(), var));
+  }
+
+  // Must happen before `setContextualType` so that any opaque result types get
+  // the correct underlying type.
+  expr = cs.buildTypeErasedExpr(expr, target.getDeclContext(),
+                                target.getExprContextualType(),
+                                target.getExprContextualTypePurpose());
+
+  // Tell the constraint system what the contextual type is. This is used in
+  // constraint generation, informs diagnostics, and is a hint for various
+  // performance optimizations.
   cs.setContextualType(
       expr,
       target.getExprContextualTypeLoc(),
