@@ -223,8 +223,9 @@ func recursion(x: Int) -> some P {
 
 func noReturnStmts() -> some P {} // expected-error {{function declares an opaque return type, but has no return statements in its body from which to infer an underlying type}} {{educational-notes=opaque-type-inference}}
 
-func returnUninhabited() -> some P { // expected-note {{opaque return type declared here}}
-    fatalError() // expected-error{{return type of global function 'returnUninhabited()' requires that 'Never' conform to 'P'}}
+// FIXME [OPAQUE SUPPORT]: regression in error message clarity
+func returnUninhabited() -> some P { // expected-note {{where 'τ_0_0' = 'Never'}}
+    fatalError() // expected-error{{global function 'returnUninhabited()' requires that 'Never' conform to 'P'}}
 }
 
 func mismatchedReturnTypes(_ x: Bool, _ y: Int, _ z: String) -> some P { // expected-error{{do not have matching underlying types}} {{educational-notes=opaque-type-inference}}
@@ -359,34 +360,40 @@ struct RedeclarationTest {
 
 func diagnose_requirement_failures() {
   struct S {
-    var foo: some P { return S() } // expected-note {{declared here}}
-    // expected-error@-1 {{return type of property 'foo' requires that 'S' conform to 'P'}}
+    // FIXME [OPAQUE SUPPORT]: regression in error message clarity
+    var foo: some P { return S() } // expected-note {{where 'τ_0_0' = 'S'}}
+    // expected-error@-1 {{getter '_' requires that 'S' conform to 'P'}}
 
-    subscript(_: Int) -> some P { // expected-note {{declared here}}
+    // FIXME [OPAQUE SUPPORT]: regression in error message clarity
+    subscript(_: Int) -> some P { // expected-note {{where 'τ_0_0' = 'S'}}
       return S()
-      // expected-error@-1 {{return type of subscript 'subscript(_:)' requires that 'S' conform to 'P'}}
+      // expected-error@-1 {{getter '_' requires that 'S' conform to 'P'}}
     }
 
-    func bar() -> some P { // expected-note {{declared here}}
+    // FIXME [OPAQUE SUPPORT]: regression in error message clarity
+    func bar() -> some P { // expected-note {{where 'τ_0_0' = 'S'}}
       return S()
-      // expected-error@-1 {{return type of instance method 'bar()' requires that 'S' conform to 'P'}}
+      // expected-error@-1 {{instance method 'bar()' requires that 'S' conform to 'P'}}
     }
 
-    static func baz(x: String) -> some P { // expected-note {{declared here}}
+    // FIXME [OPAQUE SUPPORT]: regression in error message clarity
+    static func baz(x: String) -> some P { // expected-note {{where 'τ_0_0' = 'S'}}
       return S()
-      // expected-error@-1 {{return type of static method 'baz(x:)' requires that 'S' conform to 'P'}}
+      // expected-error@-1 {{static method 'baz(x:)' requires that 'S' conform to 'P'}}
     }
   }
 
-  func fn() -> some P { // expected-note {{declared here}}
+  // FIXME [OPAQUE SUPPORT]: regression in error message clarity
+  func fn() -> some P { // expected-note {{where 'τ_0_0' = 'S'}}
     return S()
-    // expected-error@-1 {{return type of local function 'fn()' requires that 'S' conform to 'P'}}
+    // expected-error@-1 {{local function 'fn()' requires that 'S' conform to 'P'}}
   }
 }
 
-func global_function_with_requirement_failure() -> some P { // expected-note {{declared here}}
+// FIXME [OPAQUE SUPPORT]: regression in error message clarity
+func global_function_with_requirement_failure() -> some P { // expected-note {{where 'τ_0_0' = 'Double'}}
   return 42 as Double
-  // expected-error@-1 {{return type of global function 'global_function_with_requirement_failure()' requires that 'Double' conform to 'P'}}
+  // expected-error@-1 {{global function 'global_function_with_requirement_failure()' requires that 'Double' conform to 'P'}}
 }
 
 func recursive_func_is_invalid_opaque() {
@@ -430,7 +437,8 @@ protocol P_51641323 {
 
 func rdar_51641323() {
   struct Foo: P_51641323 {
-    var foo: some P_51641323 { // expected-note {{required by opaque return type of property 'foo'}}
+    // FIXME [OPAQUE SUPPORT]: regression in error message clarity
+    var foo: some P_51641323 { // expected-note {{required by getter '_' where 'τ_0_0' = '() -> ()'}}
       {} // expected-error {{type '() -> ()' cannot conform to 'P_51641323'}} expected-note {{only concrete types such as structs, enums and classes can conform to protocols}}
     }
   }

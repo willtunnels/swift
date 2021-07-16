@@ -629,12 +629,12 @@ wrapperifyInfer(true) { x in // expected-error{{unable to infer type of a closur
 struct DoesNotConform {}
 
 struct MyView {
-  // FIXME [OPAQUE SUPPORT]: this is a big regression in error message clarity
+  // FIXME [OPAQUE SUPPORT]: regression in error message clarity
   @TupleBuilder var value: some P { // expected-note{{where 'τ_0_0' = 'DoesNotConform'}}
     DoesNotConform()
   } // expected-error{{getter '_' requires that 'DoesNotConform' conform to 'P'}}
 
-  // FIXME [OPAQUE SUPPORT]: this is a big regression in error message clarity
+  // FIXME [OPAQUE SUPPORT]: regression in error message clarity
   @TupleBuilder func test() -> some P { // expected-note{{where 'τ_0_0' = 'DoesNotConform'}}
     DoesNotConform()
   } // expected-error{{instance method 'test()' requires that 'DoesNotConform' conform to 'P'}}
@@ -665,7 +665,7 @@ struct MyView {
     }
   }
 
-  // FIXME [OPAQUE SUPPORT]: this is a big regression in error message clarity
+  // FIXME [OPAQUE SUPPORT]: regression in error message clarity
   @TupleBuilder var invalidConversion: Int {
     ""
   } // expected-error {{cannot convert return expression of type 'String' to return type 'Int'}}
