@@ -629,15 +629,15 @@ wrapperifyInfer(true) { x in // expected-error{{unable to infer type of a closur
 struct DoesNotConform {}
 
 struct MyView {
-  @TupleBuilder var value: some P { // expected-error {{return type of property 'value' requires that 'DoesNotConform' conform to 'P'}}
-    // expected-note@-1 {{opaque return type declared here}}
+  // FIXME [OPAQUE SUPPORT]: this is a big regression in error message clarity
+  @TupleBuilder var value: some P { // expected-note{{where 'τ_0_0' = 'DoesNotConform'}}
     DoesNotConform()
-  }
+  } // expected-error{{getter '_' requires that 'DoesNotConform' conform to 'P'}}
 
-  @TupleBuilder func test() -> some P { // expected-error {{return type of instance method 'test()' requires that 'DoesNotConform' conform to 'P'}}
-    // expected-note@-1 {{opaque return type declared here}}
+  // FIXME [OPAQUE SUPPORT]: this is a big regression in error message clarity
+  @TupleBuilder func test() -> some P { // expected-note{{where 'τ_0_0' = 'DoesNotConform'}}
     DoesNotConform()
-  }
+  } // expected-error{{instance method 'test()' requires that 'DoesNotConform' conform to 'P'}}
 
   @TupleBuilder var emptySwitch: some P {
     switch Optional.some(1) { // expected-error {{'switch' statement body must have at least one 'case' or 'default' block; do you want to add a default case?}}
@@ -665,9 +665,10 @@ struct MyView {
     }
   }
 
-  @TupleBuilder var invalidConversion: Int { // expected-error {{cannot convert value of type 'String' to specified type 'Int'}}
+  // FIXME [OPAQUE SUPPORT]: this is a big regression in error message clarity
+  @TupleBuilder var invalidConversion: Int {
     ""
-  }
+  } // expected-error {{cannot convert return expression of type 'String' to return type 'Int'}}
 }
 
 // Make sure throwing result builder closures are implied.

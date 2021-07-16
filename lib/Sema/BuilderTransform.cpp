@@ -1836,7 +1836,9 @@ ConstraintSystem::matchResultBuilder(
   // Bind the body result type to the type of the transformed expression.
   setContextualType(applied->returnExpr, TypeLoc::withoutLoc(bodyResultType),
                     CTP_ReturnStmt);
-  addContextualConversionConstraint(applied->returnExpr, CTP_ReturnStmt);
+  addContextualConversionConstraint(applied->returnExpr,
+                                    getContextualType(applied->returnExpr),
+                                    CTP_ReturnStmt);
 
   return getTypeMatchSuccess();
 }

@@ -3804,7 +3804,11 @@ bool ConstraintSystem::generateConstraints(
 
     // If there is a type that we're expected to convert to, add the conversion
     // constraint.
-    if (Type convertType = getContextualType(target.getAsExpr())) {
+    if (Type convertType = target.getExprConversionType()) {
+      // FIXME/XXX [OPAQUE SUPPORT]: we should always use the contextual type
+      if (Type contextType = getContextualType(target.getAsExpr()))
+        convertType = contextType;
+
       // Determine whether we know more about the contextual type.
       ContextualTypePurpose ctp = target.getExprContextualTypePurpose();
       // auto *convertTypeLocator =
@@ -3850,7 +3854,7 @@ bool ConstraintSystem::generateConstraints(
       //  });
       //}
 
-      addContextualConversionConstraint(expr, ctp);
+      addContextualConversionConstraint(expr, convertType, ctp);
     }
 
     // For an initialization target, generate constraints for the pattern.

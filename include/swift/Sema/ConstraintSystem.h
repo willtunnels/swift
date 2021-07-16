@@ -3296,7 +3296,7 @@ public:
 
   /// Add the appropriate constraint for a contextual conversion. Uses
   /// `ConstraintSystem::getContextualType` to determine the conversion type.
-  void addContextualConversionConstraint(Expr *expr,
+  void addContextualConversionConstraint(Expr *expr, Type conversionType,
                                          ContextualTypePurpose purpose);
 
   /// Convenience function to pass an \c ArrayRef to \c addJoinConstraint
