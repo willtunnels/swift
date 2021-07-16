@@ -2643,11 +2643,13 @@ public:
 /// An AST walker that determines the underlying type of an opaque return decl
 /// from its associated function body.
 class OpaqueUnderlyingTypeChecker : public ASTWalker {
+  using Candidate = std::pair<Expr *, Type>;
+
   ASTContext &Ctx;
   AbstractFunctionDecl *Implementation;
   OpaqueTypeDecl *OpaqueDecl;
   BraceStmt *Body;
-  SmallVector<std::pair<Expr*, Type>, 4> Candidates;
+  SmallVector<Candidate, 4> Candidates;
 
   bool HasInvalidReturn = false;
 
@@ -2680,23 +2682,13 @@ public:
     }
     
     // Check whether all of the underlying type candidates match up.
-    auto opaqueTypeInContext =
-      Implementation->mapTypeIntoContext(OpaqueDecl->getDeclaredInterfaceType());
-    Type underlyingType = Candidates.front().second;
-    
     // TODO [OPAQUE SUPPORT]: multiple opaque types
-    bool mismatch = false;
-    for (auto otherCandidate : llvm::makeArrayRef(Candidates).slice(1)) {
-      // Disregard tautological candidates.
-      if (otherCandidate.second->isEqual(opaqueTypeInContext))
-        continue;
-        
-      if (!underlyingType->isEqual(otherCandidate.second)) {
-        mismatch = true;
-        break;
-      }
-    }
-    
+    Type underlyingType = Candidates.front().second;
+    bool mismatch =
+        std::any_of(Candidates.begin() + 1, Candidates.end(),
+                    [&](Candidate &otherCandidate) {
+                      return !underlyingType->isEqual(otherCandidate.second);
+                    });
     if (mismatch) {
       Implementation->diagnose(
           diag::opaque_type_mismatched_underlying_type_candidates);
@@ -2710,6 +2702,8 @@ public:
     
     // The underlying type can't be defined recursively
     // in terms of the opaque type itself.
+    auto opaqueTypeInContext = Implementation->mapTypeIntoContext(
+        OpaqueDecl->getDeclaredInterfaceType());
     auto isSelfReferencing = underlyingType.findIf([&](Type t) -> bool {
       return t->isEqual(opaqueTypeInContext);
     });
@@ -2741,15 +2735,11 @@ public:
   
   std::pair<bool, Expr *> walkToExprPre(Expr *E) override {
     if (auto underlyingToOpaque = dyn_cast<UnderlyingToOpaqueExpr>(E)) {
-      assert(E->getType()->isEqual(
-       Implementation->mapTypeIntoContext(OpaqueDecl->getDeclaredInterfaceType()))
-             && "unexpected opaque type in function body");
-      
       Candidates.push_back(std::make_pair(underlyingToOpaque->getSubExpr(),
                                   underlyingToOpaque->getSubExpr()->getType()));
+      return {false, E};
     }
-    //return std::make_pair(true, E);
-    return std::make_pair(false, E);
+    return {true, E};
   }
 
   std::pair<bool, Stmt *> walkToStmtPre(Stmt *S) override {
