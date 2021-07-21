@@ -382,23 +382,22 @@ TypeChecker::typeCheckExpression(
                                 target.getExprContextualType(),
                                 target.getExprContextualTypePurpose());
 
+  // If the client can handle unresolved type variables, leave them in the
+  // system.
+  auto allowFreeTypeVariables = FreeTypeVariableBinding::Disallow;
+
   // Tell the constraint system what the contextual type is. This is used in
   // constraint generation, informs diagnostics, and is a hint for various
   // performance optimizations.
-  cs.setContextualType(
-      expr,
-      target.getExprContextualTypeLoc(),
-      target.getExprContextualTypePurpose());
+  cs.setContextualType(expr, target.getExprContextualTypeLoc(),
+                       target.getExprContextualTypePurpose(),
+                       allowFreeTypeVariables);
 
   // Try to shrink the system by reducing disjunction domains. This
   // goes through every sub-expression and generate its own sub-system, to
   // try to reduce the domains of those subexpressions.
   cs.shrink(expr);
   target.setExpr(expr);
-
-  // If the client can handle unresolved type variables, leave them in the
-  // system.
-  auto allowFreeTypeVariables = FreeTypeVariableBinding::Disallow;
 
   // Attempt to solve the constraint system.
   auto viable = cs.solve(target, allowFreeTypeVariables);

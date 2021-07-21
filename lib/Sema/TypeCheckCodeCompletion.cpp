@@ -407,6 +407,9 @@ getTypeOfExpressionWithoutApplying(Expr *&expr, DeclContext *dc,
     expr->setType(Type());
   SolutionApplicationTarget target(
       expr, dc, CTP_Unused, Type(), /*isDiscarded=*/false);
+  cs.setContextualType(expr, target.getExprContextualTypeLoc(),
+                       target.getExprContextualTypePurpose(),
+                       allowFreeTypeVariables);
   auto viable = cs.solve(target, allowFreeTypeVariables);
   if (!viable) {
     recoverOriginalType();

@@ -5699,28 +5699,41 @@ Type ConstraintSystem::getVarType(const VarDecl *var) {
   });
 }
 
-void ConstraintSystem::setContextualType(ASTNode node, TypeLoc T,
-                                         ContextualTypePurpose purpose) {
+void ConstraintSystem::setContextualType(
+    ASTNode node, TypeLoc T, ContextualTypePurpose purpose,
+    FreeTypeVariableBinding allowFreeTypeVariables) {
   assert(bool(node) && "Expected non-null expression!");
   assert(contextualTypes.count(node) == 0 &&
          "Already set this contextual type");
 
   auto contextualType = T.getType();
+  bool transformUnresolved =
+      allowFreeTypeVariables == FreeTypeVariableBinding::UnresolvedType;
+
   if (contextualType) {
     contextualType = contextualType.transform([&](Type type) -> Type {
       // TODO [OPAQUE SUPPORT]: perhaps we could provide better locators here?
       auto *locator =
           getConstraintLocator(node, LocatorPathElt::ContextualType(purpose));
 
-      if (type->is<OpaqueTypeArchetypeType>()) {
+      if (type->is<OpaqueTypeArchetypeType>())
         return openOpaqueType(type, locator);
-      }
 
-      if (type->is<PlaceholderType>()) {
+      if (auto *placeholderType = type->getAs<PlaceholderType>()) {
+        if (auto *placeholderRepr = placeholderType->getOriginator()
+                                        .dyn_cast<PlaceholderTypeRepr *>())
+          locator = getConstraintLocator(
+              locator, LocatorPathElt::PlaceholderType(placeholderRepr));
+
         return createTypeVariable(locator, TVO_CanBindToNoEscape |
                                                TVO_PrefersSubtypeBinding |
                                                TVO_CanBindToHole);
       }
+
+      if (transformUnresolved && type->is<UnresolvedType>())
+        return createTypeVariable(locator, TVO_CanBindToNoEscape |
+                                               TVO_PrefersSubtypeBinding |
+                                               TVO_CanBindToHole);
 
       return type;
     });

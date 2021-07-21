@@ -3810,51 +3810,8 @@ bool ConstraintSystem::generateConstraints(
         convertType = contextType;
 
       // Determine whether we know more about the contextual type.
-      ContextualTypePurpose ctp = target.getExprContextualTypePurpose();
-      // auto *convertTypeLocator =
-      //    getConstraintLocator(expr, LocatorPathElt::ContextualType(ctp));
-
-      // FIXME [OPAQUE SUPPORT]: most of this got moved to `setContextualType`,
-      // but `UnresolvedTypes` aren't handled there, so they are broken now!!!
-
-      // auto getLocator = [&](Type ty) -> ConstraintLocator * {
-      //  // If we have a placeholder originating from a PlaceholderTypeRepr,
-      //  // tack that on to the locator.
-      //  if (auto *placeholderTy = ty->getAs<PlaceholderType>())
-      //    if (auto *placeholderRepr = placeholderTy->getOriginator()
-      //                                    .dyn_cast<PlaceholderTypeRepr *>())
-      //      return getConstraintLocator(
-      //          convertTypeLocator,
-      //          LocatorPathElt::PlaceholderType(placeholderRepr));
-      //  return convertTypeLocator;
-      //};
-
-      // Substitute type variables in for placeholder types (and unresolved
-      // types, if allowed).
-      // if (allowFreeTypeVariables == FreeTypeVariableBinding::UnresolvedType)
-      // {
-      //  convertType = convertType.transform([&](Type type) -> Type {
-      //    if (type->is<UnresolvedType>() || type->is<PlaceholderType>()) {
-      //      return createTypeVariable(getLocator(type),
-      //                                TVO_CanBindToNoEscape |
-      //                                    TVO_PrefersSubtypeBinding |
-      //                                    TVO_CanBindToHole);
-      //    }
-      //    return type;
-      //  });
-      //} else {
-      //  convertType = convertType.transform([&](Type type) -> Type {
-      //    if (type->is<PlaceholderType>()) {
-      //      return createTypeVariable(getLocator(type),
-      //                                TVO_CanBindToNoEscape |
-      //                                    TVO_PrefersSubtypeBinding |
-      //                                    TVO_CanBindToHole);
-      //    }
-      //    return type;
-      //  });
-      //}
-
-      addContextualConversionConstraint(expr, convertType, ctp);
+      addContextualConversionConstraint(expr, convertType,
+                                        target.getExprContextualTypePurpose());
     }
 
     // For an initialization target, generate constraints for the pattern.

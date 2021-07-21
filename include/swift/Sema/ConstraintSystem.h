@@ -3017,8 +3017,9 @@ public:
   /// and creating type variables for placeholders).
   ///
   /// May only be called once per AST node.
-  void setContextualType(ASTNode node, TypeLoc T,
-                         ContextualTypePurpose purpose);
+  void setContextualType(ASTNode node, TypeLoc T, ContextualTypePurpose purpose,
+                         FreeTypeVariableBinding allowFreeTypeVariables =
+                             FreeTypeVariableBinding::Disallow);
 
   Optional<ContextualTypeInfo> getContextualTypeInfo(ASTNode node) const {
     auto known = contextualTypes.find(node);
