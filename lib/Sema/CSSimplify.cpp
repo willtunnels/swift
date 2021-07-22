@@ -1615,7 +1615,6 @@ ConstraintSystem::matchTupleTypes(TupleType *tuple1, TupleType *tuple2,
     subKind = ConstraintKind::Conversion;
     break;
 
-  case ConstraintKind::OpaqueUnderlyingType:
   case ConstraintKind::Bind:
   case ConstraintKind::BindParam:
   case ConstraintKind::BindToPointerType:
@@ -1760,7 +1759,6 @@ static bool matchFunctionRepresentations(FunctionType::ExtInfo einfo1,
     }
     return true;
 
-  case ConstraintKind::OpaqueUnderlyingType:
   case ConstraintKind::BridgingConversion:
   case ConstraintKind::ApplicableFunction:
   case ConstraintKind::DynamicCallableApplicableFunction:
@@ -2162,7 +2160,6 @@ ConstraintSystem::matchFunctionTypes(FunctionType *func1, FunctionType *func2,
   case ConstraintKind::Conversion:
   case ConstraintKind::ArgumentConversion:
   case ConstraintKind::OperatorArgumentConversion:
-  case ConstraintKind::OpaqueUnderlyingType:
     subKind = ConstraintKind::Subtype;
     break;
 
@@ -5151,7 +5148,6 @@ ConstraintSystem::matchTypes(Type type1, Type type2, ConstraintKind kind,
       return formUnsolvedResult();
     }
 
-    case ConstraintKind::OpaqueUnderlyingType:
     case ConstraintKind::ApplicableFunction:
     case ConstraintKind::DynamicCallableApplicableFunction:
     case ConstraintKind::BindOverload:
@@ -9031,14 +9027,6 @@ ConstraintSystem::simplifyDynamicTypeOfConstraint(
 }
 
 ConstraintSystem::SolutionKind
-ConstraintSystem::simplifyOpaqueUnderlyingTypeConstraint(Type type1, Type type2,
-                                             TypeMatchOptions flags,
-                                             ConstraintLocatorBuilder locator) {
-  addConstraint(ConstraintKind::Equal, type1, type2, locator);
-  return getTypeMatchSuccess();
-}
-
-ConstraintSystem::SolutionKind
 ConstraintSystem::simplifyBridgingConstraint(Type type1,
                                              Type type2,
                                              TypeMatchOptions flags,
@@ -11673,10 +11661,6 @@ ConstraintSystem::addConstraintImpl(ConstraintKind kind, Type first,
   case ConstraintKind::OperatorArgumentConversion:
     return addArgumentConversionConstraintImpl(kind, first, second, locator);
 
-  case ConstraintKind::OpaqueUnderlyingType:
-    return simplifyOpaqueUnderlyingTypeConstraint(first, second,
-                                                  subflags, locator);
-
   case ConstraintKind::BridgingConversion:
     return simplifyBridgingConstraint(first, second, subflags, locator);
 
@@ -12080,8 +12064,7 @@ ConstraintSystem::simplifyConstraint(const Constraint &constraint) {
   case ConstraintKind::Subtype:
   case ConstraintKind::Conversion:
   case ConstraintKind::ArgumentConversion:
-  case ConstraintKind::OperatorArgumentConversion:
-  case ConstraintKind::OpaqueUnderlyingType: {
+  case ConstraintKind::OperatorArgumentConversion: {
     // Relational constraints.
 
     // If there is a fix associated with this constraint, apply it.
