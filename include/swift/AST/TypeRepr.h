@@ -1119,7 +1119,7 @@ private:
 /// types.
 ///
 /// This can occur only as the return type of a function declaration, or the
-/// type of a property, to specify subtypes which should be abstracted from
+/// type of a property, to specify types which should be abstracted from
 /// callers, given a set of generic constraints that the concrete types satisfy:
 ///
 /// func foo() -> <T: Collection> T { return [1] }

@@ -1708,12 +1708,14 @@ namespace {
       auto contextualType = CS.getContextualType(expr);
 
       auto joinElementTypes = [&](Optional<Type> elementType) {
+        auto openedElementType = elementType.map([&](Type type){ return CS.openOpaqueTypeRec(type, locator); });
+
         const auto elements = expr->getElements();
         unsigned index = 0;
 
         using Iterator = decltype(elements)::iterator;
         CS.addJoinConstraint<Iterator>(locator, elements.begin(), elements.end(),
-                                       elementType, [&](const auto it) {
+                                       openedElementType, [&](const auto it) {
           auto *locator = CS.getConstraintLocator(expr, LocatorPathElt::TupleElement(index++));
           return std::make_pair(CS.getType(*it), locator);
         });
@@ -1824,16 +1826,14 @@ namespace {
 
       auto locator = CS.getConstraintLocator(expr);
       auto contextualType = CS.getContextualType(expr);
-      Type contextualDictionaryType = nullptr;
-      Type contextualDictionaryKeyType = nullptr;
-      Type contextualDictionaryValueType = nullptr;
+      auto openedType = CS.openOpaqueTypeRec(contextualType, locator);
       
-      // If a contextual type exists for this expression, apply it directly.
+      // If a contextual type exists for this expression and is a dictionary
+      // type, apply it directly.
       Optional<std::pair<Type, Type>> dictionaryKeyValue;
-      if (contextualType &&
-          (dictionaryKeyValue = ConstraintSystem::isDictionaryType(contextualType))) {
-        // Is the contextual type a dictionary type?
-        contextualDictionaryType = contextualType;
+      if (openedType && (dictionaryKeyValue = ConstraintSystem::isDictionaryType(openedType))) {
+        Type contextualDictionaryKeyType;
+        Type contextualDictionaryValueType;
         std::tie(contextualDictionaryKeyType,
                  contextualDictionaryValueType) = *dictionaryKeyValue;
         
@@ -1842,7 +1842,7 @@ namespace {
                                       TupleTypeElt(contextualDictionaryValueType) };
         Type contextualDictionaryElementType = TupleType::get(tupleElts, C);
         
-        CS.addConstraint(ConstraintKind::LiteralConformsTo, contextualType,
+        CS.addConstraint(ConstraintKind::LiteralConformsTo, openedType,
                          dictionaryProto->getDeclaredInterfaceType(),
                          locator);
         
@@ -1855,7 +1855,7 @@ namespace {
                                expr, LocatorPathElt::TupleElement(index++)));
         }
         
-        return contextualDictionaryType;
+        return contextualType;
       }
       
       auto dictionaryTy = CS.createTypeVariable(locator,
@@ -2031,6 +2031,7 @@ namespace {
       }
 
       auto extInfo = CS.closureEffects(closure);
+      auto resultLocator = CS.getConstraintLocator(closure, ConstraintLocator::ClosureResult);
 
       // Closure expressions always have function type. In cases where a
       // parameter or return type is omitted, a fresh type variable is used to
@@ -2045,8 +2046,7 @@ namespace {
           const auto resolvedTy = resolveTypeReferenceInExpression(
               closure->getExplicitResultTypeRepr(),
               TypeResolverContext::InExpression,
-              CS.getConstraintLocator(closure,
-                                      ConstraintLocator::ClosureResult));
+              resultLocator);
           if (resolvedTy)
             return resolvedTy;
         }
@@ -2062,7 +2062,7 @@ namespace {
         // If this is a multi-statement closure, let's mark result
         // as potential hole right away.
         return Type(CS.createTypeVariable(
-            CS.getConstraintLocator(closure, ConstraintLocator::ClosureResult),
+            resultLocator,
             shouldTypeCheckInEnclosingExpression(closure) ? 0
                                                           : TVO_CanBindToHole));
       }();
@@ -2072,7 +2072,10 @@ namespace {
         extInfo = extInfo.withGlobalActor(getExplicitGlobalActor(closure));
       }
 
-      return FunctionType::get(closureParams, resultTy, extInfo);
+      // FIXME [OPAQUE SUPPORT]
+      // Type openedResultTy = CS.openOpaqueTypeRec(resultTy, resultLocator);
+      Type openedResultTy = resultTy;
+      return FunctionType::get(closureParams, openedResultTy, extInfo);
     }
 
     /// Produces a type for the given pattern, filling in any missing
@@ -2237,7 +2240,9 @@ namespace {
         // Look through reference storage types.
         type = type->getReferenceStorageReferent();
 
-        Type openedType = CS.replaceInferableTypesWithTypeVars(type, locator);
+        // Order isn't critical here. Perhaps we could replace this with a
+        // single traversal over the type instead of doing two traversals.
+        Type openedType = CS.openOpaqueTypeRec(CS.replaceInferableTypesWithTypeVars(type, locator), locator);
         assert(openedType);
 
         auto *subPattern = cast<TypedPattern>(pattern)->getSubPattern();
@@ -3820,9 +3825,7 @@ bool ConstraintSystem::generateConstraints(
     // If there is a type that we're expected to convert to, add the conversion
     // constraint.
     if (Type convertType = target.getExprConversionType()) {
-      // Determine whether we know more about the contextual type.
       ContextualTypePurpose ctp = target.getExprContextualTypePurpose();
-      bool isOpaqueReturnType = target.infersOpaqueReturnType();
       auto *convertTypeLocator =
           getConstraintLocator(expr, LocatorPathElt::ContextualType(ctp));
 
@@ -3862,8 +3865,7 @@ bool ConstraintSystem::generateConstraints(
         });
       }
 
-      addContextualConversionConstraint(expr, convertType, ctp,
-                                        isOpaqueReturnType);
+      addContextualConversionConstraint(expr, convertType, ctp);
     }
 
     // For an initialization target, generate constraints for the pattern.
