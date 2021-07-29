@@ -8935,9 +8935,10 @@ bool ConstraintSystem::resolveClosure(TypeVariableType *typeVar,
   assignFixedType(typeVar, closureType, closureLocator);
 
   // If there is a result builder to apply, do so now.
+  auto openedType = openOpaqueTypeRec(closureType->getResult(), closureLocator);
   if (resultBuilderType) {
     if (auto result = matchResultBuilder(
-            closure, resultBuilderType, closureType->getResult(),
+            closure, resultBuilderType, openedType, closureType->getResult(),
             ConstraintKind::Conversion, locator)) {
       return result->isSuccess();
     }
@@ -11954,7 +11955,7 @@ void ConstraintSystem::addContextualConversionConstraint(
   case CTP_ReturnSingleExpr:
   case CTP_Initialization: {
     if (conversionType->is<OpaqueTypeArchetypeType>())
-      constraintKind = ConstraintKind::Bind;
+      constraintKind = ConstraintKind::Equal;
     // Alternatively, we might have a nested opaque archetype, e.g. `(some P)?`.
     // In that case, we want `ConstraintKind::Conversion`.
     break;

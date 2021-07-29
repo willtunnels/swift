@@ -1855,7 +1855,7 @@ namespace {
                                expr, LocatorPathElt::TupleElement(index++)));
         }
         
-        return contextualType;
+        return openedType;
       }
       
       auto dictionaryTy = CS.createTypeVariable(locator,
@@ -2072,10 +2072,7 @@ namespace {
         extInfo = extInfo.withGlobalActor(getExplicitGlobalActor(closure));
       }
 
-      // FIXME [OPAQUE SUPPORT]
-      // Type openedResultTy = CS.openOpaqueTypeRec(resultTy, resultLocator);
-      Type openedResultTy = resultTy;
-      return FunctionType::get(closureParams, openedResultTy, extInfo);
+      return FunctionType::get(closureParams, resultTy, extInfo);
     }
 
     /// Produces a type for the given pattern, filling in any missing
@@ -2240,9 +2237,8 @@ namespace {
         // Look through reference storage types.
         type = type->getReferenceStorageReferent();
 
-        // Order isn't critical here. Perhaps we could replace this with a
-        // single traversal over the type instead of doing two traversals.
-        Type openedType = CS.openOpaqueTypeRec(CS.replaceInferableTypesWithTypeVars(type, locator), locator);
+        Type replacedType = CS.replaceInferableTypesWithTypeVars(type, locator);
+        Type openedType = CS.openOpaqueTypeRec(replacedType, locator);
         assert(openedType);
 
         auto *subPattern = cast<TypedPattern>(pattern)->getSubPattern();
@@ -2259,7 +2255,13 @@ namespace {
         CS.addConstraint(
             ConstraintKind::Conversion, subPatternType, openedType,
             locator.withPathElement(LocatorPathElt::PatternMatch(pattern)));
-        return setType(openedType);
+
+        // FIXME [OPAQUE SUPPORT]: the distinction between where we want opaque
+        // types in opened vs. un-unopened form is *very* tricky. The pattern
+        // ultimately needs the un-opened type and it gets this from the set
+        // type of the expression.
+        CS.setType(pattern, replacedType);
+        return openedType;
       }
 
       case PatternKind::Tuple: {

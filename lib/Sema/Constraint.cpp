@@ -671,9 +671,6 @@ Constraint *Constraint::create(ConstraintSystem &cs, ConstraintKind kind,
   assert((kind != ConstraintKind::LiteralConformsTo) ||
          second->is<ProtocolType>());
   
-  // Opaque archetypes should be "opened" before being used in constraints.
-  assert(!second->hasOpaqueArchetype());
-
   // Create the constraint.
   unsigned size = totalSizeToAlloc<TypeVariableType*>(typeVars.size());
   void *mem = cs.getAllocator().Allocate(size, alignof(Constraint));

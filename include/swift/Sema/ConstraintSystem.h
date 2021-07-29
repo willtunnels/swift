@@ -795,6 +795,11 @@ struct AppliedBuilderTransform {
   /// converted.
   Type bodyResultType;
 
+  /// The interface type for the result of the body. We track this separately
+  /// from `bodyResultType` because some callers needs to know the result type
+  /// before opaque types are opened.
+  Type bodyResultInterfaceType;
+
   /// An expression whose value has been recorded for later use.
   struct RecordedExpr {
     /// The temporary value that captures the value of the expression, if
@@ -4706,7 +4711,7 @@ public:
   /// otherwise the result of applying the result builder.
   Optional<TypeMatchResult> matchResultBuilder(
       AnyFunctionRef fn, Type builderType, Type bodyResultType,
-      ConstraintKind bodyResultConstraintKind,
+      Type bodyResultInterfaceType, ConstraintKind bodyResultConstraintKind,
       ConstraintLocatorBuilder locator);
 
   /// Matches a wrapped or projected value parameter type to its backing

@@ -207,11 +207,12 @@ class BuilderClosureVisitor
 public:
   BuilderClosureVisitor(ASTContext &ctx, ConstraintSystem *cs,
                         DeclContext *dc, Type builderType,
-                        Type bodyResultType)
+                        Type bodyResultType, Type bodyResultInterfaceType)
       : cs(cs), dc(dc), ctx(ctx), builderType(builderType) {
     builder = builderType->getAnyNominal();
     applied.builderType = builderType;
     applied.bodyResultType = bodyResultType;
+    applied.bodyResultInterfaceType = bodyResultInterfaceType;
 
     // Use buildOptional(_:) if available, otherwise fall back to buildIf
     // when available.
@@ -239,7 +240,7 @@ public:
     }
 
     applied.returnExpr = cs->buildTypeErasedExpr(applied.returnExpr,
-                                                 dc, applied.bodyResultType,
+                                                 dc, applied.bodyResultInterfaceType,
                                                  CTP_ReturnStmt);
 
     applied.returnExpr = cs->generateConstraints(applied.returnExpr, dc);
@@ -1044,11 +1045,11 @@ private:
     switch (target.kind) {
     case ResultBuilderTarget::ReturnValue: {
       // Return the expression.
-      Type bodyResultType =
-          solution.simplifyType(builderTransform.bodyResultType);
+      Type bodyResultInterfaceType =
+          solution.simplifyType(builderTransform.bodyResultInterfaceType);
 
       SolutionApplicationTarget returnTarget(
-          capturedExpr, dc, CTP_ReturnStmt, bodyResultType,
+          capturedExpr, dc, CTP_ReturnStmt, bodyResultInterfaceType,
           /*isDiscarded=*/false);
       Expr *resultExpr = nullptr;
       if (auto resultTarget = rewriteTarget(returnTarget))
@@ -1631,20 +1632,25 @@ Optional<BraceStmt *> TypeChecker::applyResultBuilderBodyTransform(
   auto resultInterfaceTy = func->getResultInterfaceType();
   auto resultContextType = func->mapTypeIntoContext(resultInterfaceTy);
 
+  ASTNode maybeOpaqueAnchor = func->getBody();
+
   // Determine whether we're inferring the underlying type for the opaque
   // result type of this function.
   ConstraintKind resultConstraintKind = ConstraintKind::Conversion;
   if (auto opaque = resultContextType->getAs<OpaqueTypeArchetypeType>()) {
     if (opaque->getDecl()->isOpaqueReturnTypeOfFunction(func)) {
-      resultConstraintKind = ConstraintKind::OpaqueUnderlyingType;
+      maybeOpaqueAnchor = opaque->getDecl();
+      resultConstraintKind = ConstraintKind::Equal;
     }
   }
 
   // Build a constraint system in which we can check the body of the function.
   ConstraintSystem cs(func, options);
 
+  auto openedLocator = cs.getConstraintLocator(maybeOpaqueAnchor, LocatorPathElt::ResultBuilderBodyResult());
+  auto openedType = cs.openOpaqueTypeRec(resultContextType, openedLocator);
   if (auto result = cs.matchResultBuilder(
-          func, builderType, resultContextType, resultConstraintKind,
+          func, builderType, openedType, resultContextType, resultConstraintKind,
           cs.getConstraintLocator(func->getBody()))) {
     if (result->isFailure())
       return nullptr;
@@ -1704,7 +1710,7 @@ Optional<BraceStmt *> TypeChecker::applyResultBuilderBodyTransform(
 Optional<ConstraintSystem::TypeMatchResult>
 ConstraintSystem::matchResultBuilder(
     AnyFunctionRef fn, Type builderType, Type bodyResultType,
-    ConstraintKind bodyResultConstraintKind,
+    Type bodyResultInterfaceType, ConstraintKind bodyResultConstraintKind,
     ConstraintLocatorBuilder locator) {
   auto builder = builderType->getAnyNominal();
   assert(builder && "Bad result builder type");
@@ -1763,7 +1769,7 @@ ConstraintSystem::matchResultBuilder(
   {
     // Check whether we can apply this specific result builder.
     BuilderClosureVisitor visitor(getASTContext(), nullptr, dc, builderType,
-                                  bodyResultType);
+                                  bodyResultType, bodyResultInterfaceType);
 
     // If we saw a control-flow statement or declaration that the builder
     // cannot handle, we don't have a well-formed result builder application.
@@ -1784,7 +1790,7 @@ ConstraintSystem::matchResultBuilder(
   }
 
   BuilderClosureVisitor visitor(getASTContext(), this, dc, builderType,
-                                bodyResultType);
+                                bodyResultType, bodyResultInterfaceType);
 
   Optional<AppliedBuilderTransform> applied = None;
   {
