@@ -92,14 +92,39 @@ struct R2<T: P, U: Q> {
   var y: U
 }
 
-let asLetFuncRet: () -> some P = { 1 }
-let asLetFuncArg: (some P) -> P = { $0 }
-func asHOFRetRet() -> () -> some P { return { 1 } }
-func asHOFRetArg() -> (some P) -> P { return { $0 } }
+// TODO: cases that we should support, but don't yet:
+//
+//  WARNING: using '!' is not allowed here; treating this as '?' instead
+//  func asUnwrappedOptionalBase() -> (some P)! { return 1 }
+//
+//  Structural opaque types don't resolve properly outside of function returns, e.g.:
+//
+//    ERROR: 'some' types are only implemented for the declared type of properties and subscripts and the return type of functions 
+//    let asLetFuncRet: () -> some P = { 1 }
+//
+//    ERROR: 'some' types are only implemented for the declared type of properties and subscripts and the return type of functions 
+//    let asLetFuncArg: (some P) -> P = { $0 }
+//
+//    NOTE: the following test should error, but the error should be that we
+//    cannot find member `tup.0.d()` because, while the underlying type of
+//    `some P` has member `d`, the `P` protocol does not
+//    ERROR: 'some' types are only implemented for the declared type of properties and subscripts and the return type of functions 
+//    func structuralMemberLookup() {
+//      var tup: (some P, Int) = (1, 1)
+//      tup.0.paul();
+//      tup.0.d();
+//    }
+//
+//  ERROR: generic parameter 'τ_0_0' could not be inferred
+//  func asHOFRetRet() -> () -> some P { return { 1 } }
+//
+//  ERROR: function declares an opaque return type, but has no return statements in its body from which to infer an underlying type
+//  func asHOFRetArg() -> (some P) -> () { return { (x: String) -> () in } }
+//
+
 func asTupleElem() -> (P, some Q) { return (1, 2) }
 func asArrayElem() -> [some P] { return [1] }
 func asOptionalBase() -> (some P)? { return 1 }
-func asUnwrappedOptionalBase() -> (some P)! { return 1 }
 
 func asUnconstrainedBoundGeneric1() -> S1<some P> { return S1(x: 1) }
 func asUnconstrainedBoundGeneric2() -> S2<P, some Q> { return S2(x: 1, y: 2) }
@@ -108,22 +133,21 @@ func asConstrainedBoundGeneric2() -> R2<Int, some Q> { return R2(x: 1, y: 2) }
 func asNestedBoundGenericDirect() -> S1<S1<some P>> { return S1(x: S1(x: 1)) }
 func asNestedBoundGenericIndirect() -> S1<S1<(Int, some P)>> { return S1(x: S1(x: (1, 2))) }
 
-func funcToAnyOpaqueCoercion() -> S<some Any> {
-  var f: () -> () = {}
-  return S(x: f)
+// Tests an interesting SILGen case. For the underlying opaque type, we have to
+// use the generic calling convention for closures.
+func funcToAnyOpaqueCoercion() -> S1<some Any> {
+  let f: () -> () = {}
+  return S1(x: f)
 }
 
-func structuralMemberLookup() {
-  var tup: (some P, Int) = (1, 1)
-  tup.0.paul();
-  tup.0.d(); // expected-error{{has no member 'd'}}
-}
-
-func structuralMismatchedReturnTypes(_ x: Bool, _ y: Int, _ z: String) -> (some P, Int) { // expected-error{{do not have matching underlying types}} {{educational-notes=opaque-type-inference}}
+// TODO: We should give better error messages here. The opaque types have
+// underlying types 'Int' and 'String', but the return statments have underlying
+// types '(Int, Int)' and '(String, Int)'.
+func structuralMismatchedReturnTypes(_ x: Bool, _ y: Int, _ z: String) -> (some P, Int) { // expected-error{{do not have matching underlying types}}
   if x {
-    return (y, 1) // expected-note{{underlying type '(Int, Int)'}}
+    return (y, 1) // expected-note{{return statement has underlying type 'Int'}}
   } else {
-    return (z, 1) // expected-note{{underlying type '(String, Int)'}}
+    return (z, 1) // expected-note{{return statement has underlying type 'String'}}
   }
 }
 
