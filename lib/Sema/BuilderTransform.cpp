@@ -1632,14 +1632,11 @@ Optional<BraceStmt *> TypeChecker::applyResultBuilderBodyTransform(
   auto resultInterfaceTy = func->getResultInterfaceType();
   auto resultContextType = func->mapTypeIntoContext(resultInterfaceTy);
 
-  ASTNode maybeOpaqueAnchor = func->getBody();
-
   // Determine whether we're inferring the underlying type for the opaque
   // result type of this function.
   ConstraintKind resultConstraintKind = ConstraintKind::Conversion;
   if (auto opaque = resultContextType->getAs<OpaqueTypeArchetypeType>()) {
     if (opaque->getDecl()->isOpaqueReturnTypeOfFunction(func)) {
-      maybeOpaqueAnchor = opaque->getDecl();
       resultConstraintKind = ConstraintKind::Equal;
     }
   }
@@ -1647,8 +1644,7 @@ Optional<BraceStmt *> TypeChecker::applyResultBuilderBodyTransform(
   // Build a constraint system in which we can check the body of the function.
   ConstraintSystem cs(func, options);
 
-  auto openedLocator = cs.getConstraintLocator(maybeOpaqueAnchor, LocatorPathElt::ResultBuilderBodyResult());
-  auto openedType = cs.openOpaqueTypeRec(resultContextType, openedLocator);
+  auto openedType = cs.openOpaqueTypeRec(resultContextType, cs.getConstraintLocator(func, ConstraintLocator::ResultBuilderBodyResult));
   if (auto result = cs.matchResultBuilder(
           func, builderType, openedType, resultContextType, resultConstraintKind,
           cs.getConstraintLocator(func->getBody()))) {

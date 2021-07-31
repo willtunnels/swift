@@ -122,6 +122,8 @@ struct R2<T: P, U: Q> {
 //  func asHOFRetArg() -> (some P) -> () { return { (x: String) -> () in } }
 //
 
+func twoOpaqueTypes() -> (some P, some P) { return (1, 2) } // expected-error{{only one 'opaque' type is supported}}
+
 func asTupleElem() -> (P, some Q) { return (1, 2) }
 func asArrayElem() -> [some P] { return [1] }
 func asOptionalBase() -> (some P)? { return 1 }
