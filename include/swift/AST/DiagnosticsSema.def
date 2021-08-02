@@ -4078,9 +4078,6 @@ WARNING(trailing_closure_requires_parens,none,
         " statement; pass as a parenthesized argument to silence this warning",
         ())
 
-ERROR(opaque_type_var_no_init,none,
-      "property declares an opaque return type, but has no initializer "
-      "expression from which to infer an underlying type", ())
 ERROR(opaque_type_no_underlying_type_candidates,none,
       "function declares an opaque return type, but has no return statements "
       "in its body from which to infer an underlying type", ())
@@ -4092,6 +4089,9 @@ NOTE(opaque_type_underlying_type_candidate_here,none,
 ERROR(opaque_type_self_referential_underlying_type,none,
       "function opaque return type was inferred as %0, which defines the "
       "opaque type in terms of itself", (Type))
+ERROR(opaque_type_var_no_init,none,
+      "property declares an opaque return type, but has no initializer "
+      "expression from which to infer an underlying type", ())
 ERROR(opaque_type_var_no_underlying_type,none,
       "property declares an opaque return type, but cannot infer the "
       "underlying type from its initializer expression", ())
