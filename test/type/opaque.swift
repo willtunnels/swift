@@ -102,6 +102,9 @@ struct R2<T: P, U: Q> {
 //
 // ERROR: function declares an opaque return type, but has no return statements in its body from which to infer an underlying type
 // func asHOFRetArg() -> (some P) -> () { return { (x: String) -> () in } }
+//
+// ERROR: 'some' types are only implemented for the declared type of properties and subscripts and the return type of functions
+// let x = { () -> some P in return ConcreteP() }
 
 func twoOpaqueTypes() -> (some P, some P) { return (1, 2) } // expected-error{{only one 'opaque' type is supported}}
 func asTupleElemBad() -> (P, some Q) { return (1, C()) } // expected-note{{opaque return type declared here}} expected-error{{requires that 'C' conform to 'Q'}}

@@ -5427,23 +5427,11 @@ bool SolutionApplicationTarget::infersOpaqueReturnType() const {
   assert(kind == Kind::expression);
   switch (expression.contextualPurpose) {
   case CTP_Initialization:
-    if (Type convertType = expression.convertType.getType()) {
-      return convertType->is<OpaqueTypeArchetypeType>();
-    }
-    return false;
-
   case CTP_ReturnStmt:
   case CTP_ReturnSingleExpr:
-    if (Type convertType = expression.convertType.getType()) {
-      if (auto opaqueType = convertType->getAs<OpaqueTypeArchetypeType>()) {
-        auto dc = getDeclContext();
-        if (auto func = dyn_cast<AbstractFunctionDecl>(dc)) {
-          return opaqueType->getDecl()->isOpaqueReturnTypeOfFunction(func);
-        }
-      }
-    }
+    if (Type convertType = expression.convertType.getType())
+      return convertType->hasOpaqueArchetype();
     return false;
-
   default:
     return false;
   }
