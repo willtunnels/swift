@@ -792,13 +792,8 @@ struct AppliedBuilderTransform {
   Type builderType;
 
   /// The result type of the body, to which the returned expression will be
-  /// converted.
+  /// converted. Opaque types should be unopened.
   Type bodyResultType;
-
-  /// The interface type for the result of the body. We track this separately
-  /// from `bodyResultType` because some callers needs to know the result type
-  /// before opaque types are opened.
-  Type bodyResultInterfaceType;
 
   /// An expression whose value has been recorded for later use.
   struct RecordedExpr {
@@ -4707,11 +4702,16 @@ public:
 
   /// Apply the given result builder to the closure expression.
   ///
+  /// \param bodyResultType The type which the body of the result builder
+  /// evaluates to, with all opaque archetype types un-opened.
+  /// \param openedBodyResultType The type which the body of the result builder
+  /// evalutes to, with all opaque archetype types opened.
+  ///
   /// \returns \c None when the result builder cannot be applied at all,
   /// otherwise the result of applying the result builder.
   Optional<TypeMatchResult> matchResultBuilder(
       AnyFunctionRef fn, Type builderType, Type bodyResultType,
-      Type bodyResultInterfaceType, ConstraintKind bodyResultConstraintKind,
+      Type openedBodyResultType, ConstraintKind bodyResultConstraintKind,
       ConstraintLocatorBuilder locator);
 
   /// Matches a wrapped or projected value parameter type to its backing

@@ -205,14 +205,11 @@ class BuilderClosureVisitor
   }
 
 public:
-  BuilderClosureVisitor(ASTContext &ctx, ConstraintSystem *cs,
-                        DeclContext *dc, Type builderType,
-                        Type bodyResultType, Type bodyResultInterfaceType)
+  BuilderClosureVisitor(ASTContext &ctx, ConstraintSystem *cs, DeclContext *dc, Type builderType, Type bodyResultType)
       : cs(cs), dc(dc), ctx(ctx), builderType(builderType) {
     builder = builderType->getAnyNominal();
     applied.builderType = builderType;
     applied.bodyResultType = bodyResultType;
-    applied.bodyResultInterfaceType = bodyResultInterfaceType;
 
     // Use buildOptional(_:) if available, otherwise fall back to buildIf
     // when available.
@@ -239,9 +236,7 @@ public:
           { applied.returnExpr }, { Identifier() });
     }
 
-    applied.returnExpr = cs->buildTypeErasedExpr(applied.returnExpr,
-                                                 dc, applied.bodyResultInterfaceType,
-                                                 CTP_ReturnStmt);
+    applied.returnExpr = cs->buildTypeErasedExpr(applied.returnExpr, dc, applied.bodyResultType, CTP_ReturnStmt);
 
     applied.returnExpr = cs->generateConstraints(applied.returnExpr, dc);
     if (!applied.returnExpr) {
@@ -1046,7 +1041,7 @@ private:
     case ResultBuilderTarget::ReturnValue: {
       // Return the expression.
       Type bodyResultInterfaceType =
-          solution.simplifyType(builderTransform.bodyResultInterfaceType);
+          solution.simplifyType(builderTransform.bodyResultType);
 
       SolutionApplicationTarget returnTarget(
           capturedExpr, dc, CTP_ReturnStmt, bodyResultInterfaceType,
@@ -1644,9 +1639,9 @@ Optional<BraceStmt *> TypeChecker::applyResultBuilderBodyTransform(
   // Build a constraint system in which we can check the body of the function.
   ConstraintSystem cs(func, options);
 
-  auto openedType = cs.openOpaqueTypeRec(resultContextType, cs.getConstraintLocator(func, ConstraintLocator::ResultBuilderBodyResult));
+  auto openedResultContextType = cs.openOpaqueTypeRec(resultContextType, cs.getConstraintLocator(func, ConstraintLocator::ResultBuilderBodyResult));
   if (auto result = cs.matchResultBuilder(
-          func, builderType, openedType, resultContextType, resultConstraintKind,
+          func, builderType, resultContextType, openedResultContextType, resultConstraintKind,
           cs.getConstraintLocator(func->getBody()))) {
     if (result->isFailure())
       return nullptr;
@@ -1706,7 +1701,7 @@ Optional<BraceStmt *> TypeChecker::applyResultBuilderBodyTransform(
 Optional<ConstraintSystem::TypeMatchResult>
 ConstraintSystem::matchResultBuilder(
     AnyFunctionRef fn, Type builderType, Type bodyResultType,
-    Type bodyResultInterfaceType, ConstraintKind bodyResultConstraintKind,
+    Type openedBodyResultType, ConstraintKind bodyResultConstraintKind,
     ConstraintLocatorBuilder locator) {
   auto builder = builderType->getAnyNominal();
   assert(builder && "Bad result builder type");
@@ -1764,8 +1759,7 @@ ConstraintSystem::matchResultBuilder(
   auto dc = fn.getAsDeclContext();
   {
     // Check whether we can apply this specific result builder.
-    BuilderClosureVisitor visitor(getASTContext(), nullptr, dc, builderType,
-                                  bodyResultType, bodyResultInterfaceType);
+    BuilderClosureVisitor visitor(getASTContext(), nullptr, dc, builderType, bodyResultType);
 
     // If we saw a control-flow statement or declaration that the builder
     // cannot handle, we don't have a well-formed result builder application.
@@ -1785,8 +1779,7 @@ ConstraintSystem::matchResultBuilder(
     }
   }
 
-  BuilderClosureVisitor visitor(getASTContext(), this, dc, builderType,
-                                bodyResultType, bodyResultInterfaceType);
+  BuilderClosureVisitor visitor(getASTContext(), this, dc, builderType, bodyResultType);
 
   Optional<AppliedBuilderTransform> applied = None;
   {
@@ -1832,8 +1825,7 @@ ConstraintSystem::matchResultBuilder(
   }
 
   // Bind the body result type to the type of the transformed expression.
-  addConstraint(bodyResultConstraintKind, transformedType, bodyResultType,
-                locator);
+  addConstraint(bodyResultConstraintKind, transformedType, openedBodyResultType, locator);
   return getTypeMatchSuccess();
 }
 

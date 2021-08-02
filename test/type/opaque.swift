@@ -125,6 +125,7 @@ struct R2<T: P, U: Q> {
 func twoOpaqueTypes() -> (some P, some P) { return (1, 2) } // expected-error{{only one 'opaque' type is supported}}
 
 func asTupleElem() -> (P, some Q) { return (1, 2) }
+func asTupleElemBad() -> (P, some Q) { return (1, C()) } // expected-note{{opaque return type declared here}} expected-error{{requires that 'C' conform to 'Q'}}
 func asArrayElem() -> [some P] { return [1] }
 func asOptionalBase() -> (some P)? { return 1 }
 
