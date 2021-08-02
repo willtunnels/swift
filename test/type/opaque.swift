@@ -94,47 +94,35 @@ struct R2<T: P, U: Q> {
 
 // TODO: cases that we should support, but don't yet:
 //
-//  WARNING: using '!' is not allowed here; treating this as '?' instead
-//  func asUnwrappedOptionalBase() -> (some P)! { return 1 }
+// WARNING: using '!' is not allowed here; treating this as '?' instead
+// func asUnwrappedOptionalBase() -> (some P)! { return 1 }
 //
-//  Structural opaque types don't resolve properly outside of function returns, e.g.:
+// ERROR: generic parameter 'τ_0_0' could not be inferred
+// func asHOFRetRet() -> () -> some P { return { 1 } }
 //
-//    ERROR: 'some' types are only implemented for the declared type of properties and subscripts and the return type of functions 
-//    let asLetFuncRet: () -> some P = { 1 }
-//
-//    ERROR: 'some' types are only implemented for the declared type of properties and subscripts and the return type of functions 
-//    let asLetFuncArg: (some P) -> P = { $0 }
-//
-//    NOTE: the following test should error, but the error should be that we
-//    cannot find member `tup.0.d()` because, while the underlying type of
-//    `some P` has member `d`, the `P` protocol does not
-//    ERROR: 'some' types are only implemented for the declared type of properties and subscripts and the return type of functions 
-//    func structuralMemberLookup() {
-//      var tup: (some P, Int) = (1, 1)
-//      tup.0.paul();
-//      tup.0.d();
-//    }
-//
-//  ERROR: generic parameter 'τ_0_0' could not be inferred
-//  func asHOFRetRet() -> () -> some P { return { 1 } }
-//
-//  ERROR: function declares an opaque return type, but has no return statements in its body from which to infer an underlying type
-//  func asHOFRetArg() -> (some P) -> () { return { (x: String) -> () in } }
-//
+// ERROR: function declares an opaque return type, but has no return statements in its body from which to infer an underlying type
+// func asHOFRetArg() -> (some P) -> () { return { (x: String) -> () in } }
 
 func twoOpaqueTypes() -> (some P, some P) { return (1, 2) } // expected-error{{only one 'opaque' type is supported}}
+func asTupleElemBad() -> (P, some Q) { return (1, C()) } // expected-note{{opaque return type declared here}} expected-error{{requires that 'C' conform to 'Q'}}
 
 func asTupleElem() -> (P, some Q) { return (1, 2) }
-func asTupleElemBad() -> (P, some Q) { return (1, C()) } // expected-note{{opaque return type declared here}} expected-error{{requires that 'C' conform to 'Q'}}
 func asArrayElem() -> [some P] { return [1] }
 func asOptionalBase() -> (some P)? { return 1 }
 
-func asUnconstrainedBoundGeneric1() -> S1<some P> { return S1(x: 1) }
-func asUnconstrainedBoundGeneric2() -> S2<P, some Q> { return S2(x: 1, y: 2) }
-func asConstrainedBoundGeneric1() -> R1<some P> { return R1(x: 1) }
-func asConstrainedBoundGeneric2() -> R2<Int, some Q> { return R2(x: 1, y: 2) }
-func asNestedBoundGenericDirect() -> S1<S1<some P>> { return S1(x: S1(x: 1)) }
-func asNestedBoundGenericIndirect() -> S1<S1<(Int, some P)>> { return S1(x: S1(x: (1, 2))) }
+let asTupleElemLet: (P, some Q) = (1, 2)
+let asArrayElemLet: [some P] = [1]
+let asOptionalBaseLet: (some P)? = 1
+
+func asUnconstrainedGeneric1() -> S1<some P> { return S1(x: 1) }
+func asUnconstrainedGeneric2() -> S2<P, some Q> { return S2(x: 1, y: 2) }
+func asConstrainedGeneric1() -> R1<some P> { return R1(x: 1) }
+func asConstrainedGeneric2() -> R2<Int, some Q> { return R2(x: 1, y: 2) }
+func asNestedGenericDirect() -> S1<S1<some P>> { return S1(x: S1(x: 1)) }
+func asNestedGenericIndirect() -> S1<S1<(Int, some P)>> { return S1(x: S1(x: (1, 2))) }
+
+let asUnconstrainedGeneric2Let: S2<P, some Q> = S2(x: 1, y: 2)
+let asNestedGenericIndirectLet: S1<S1<(Int, some P)>> = S1(x: S1(x: (1, 2)))
 
 // Tests an interesting SILGen case. For the underlying opaque type, we have to
 // use the generic calling convention for closures.
@@ -152,6 +140,12 @@ func structuralMismatchedReturnTypes(_ x: Bool, _ y: Int, _ z: String) -> (some 
   } else {
     return (z, 1) // expected-note{{return statement has underlying type 'String'}}
   }
+}
+
+func structuralMemberLookupBad() {
+  var tup: (some P, Int) = (1, 1)
+  tup.0.paul();
+  tup.0.d(); // expected-error{{value of type 'some P' has no member 'd'}}
 }
 
 // Invalid positions

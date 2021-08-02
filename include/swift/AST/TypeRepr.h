@@ -160,6 +160,10 @@ public:
   /// its children.
   bool findIf(llvm::function_ref<bool(TypeRepr *)> pred);
 
+  /// Check recursively whether this type repr or any of its decendants are
+  /// opaque return type reprs.
+  bool hasOpaque();
+
   //*** Allocation Routines ************************************************/
 
   void *operator new(size_t bytes, const ASTContext &C,

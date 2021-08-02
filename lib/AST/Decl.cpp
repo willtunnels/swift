@@ -2835,14 +2835,7 @@ TypeRepr *ValueDecl::getOpaqueResultTypeRepr() const {
     returnRepr = SD->getElementTypeRepr();
   }
 
-  // TODO [OPAQUE SUPPORT]: once we want to actually perform semantic analysis
-  // on `NamedOpaqueReturnTypeRepr`s, we will need to also check `||
-  // isa<NamedOpaqueReturnTypeRepr>` here.
-  return returnRepr && returnRepr->findIf([](TypeRepr *ty) {
-    return isa<OpaqueReturnTypeRepr>(ty);
-  })
-             ? returnRepr
-             : nullptr;
+  return returnRepr && returnRepr->hasOpaque() ? returnRepr : nullptr;
 }
 
 OpaqueTypeDecl *ValueDecl::getOpaqueResultTypeDecl() const {
