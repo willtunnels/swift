@@ -56,7 +56,7 @@ const uint16_t SWIFTMODULE_VERSION_MAJOR = 0;
 /// describe what change you made. The content of this comment isn't important;
 /// it just ensures a conflict if two people change the module format.
 /// Don't worry about adhering to the 80-column limit for this line.
-const uint16_t SWIFTMODULE_VERSION_MINOR = 623; // remove designated types
+const uint16_t SWIFTMODULE_VERSION_MINOR = 624; // allow multiple structural opaque result types
 
 /// A standard hash seed used for all string hashes in a serialized module.
 ///
@@ -1053,6 +1053,7 @@ namespace decls_block {
   using OpaqueArchetypeTypeLayout = BCRecordLayout<
     OPAQUE_ARCHETYPE_TYPE,
     DeclIDField,           // the opaque type decl
+    BCVBR<4>,              // the ordinal
     SubstitutionMapIDField // the arguments
   >;
   
@@ -1373,11 +1374,12 @@ namespace decls_block {
     DeclContextIDField, // decl context
     DeclIDField, // naming decl
     GenericSignatureIDField, // interface generic signature
-    TypeIDField, // interface type for opaque type
     GenericSignatureIDField, // generic environment
     SubstitutionMapIDField, // optional substitution map for underlying type
-    AccessLevelField // access level
-    // trailed by generic parameters
+    AccessLevelField, // access level
+    BCArray<TypeIDField>, // underlying interface types
+    // The record is trailed by:
+    // - its generic parameters
   >;
 
   // TODO: remove the unnecessary FuncDecl components here

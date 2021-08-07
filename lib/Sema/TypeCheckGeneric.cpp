@@ -183,13 +183,6 @@ OpaqueResultTypeRequest::evaluate(Evaluator &evaluator,
   SmallVector<Requirement, 2> requirements;
 
   auto opaqueReprs = collectOpaqueReturnTypeReprs(repr);
-  if (opaqueReprs.size() > 1) {
-    ctx.Diags.diagnose(repr->getLoc(), diag::more_than_one_opaque_type, repr);
-    return nullptr;
-  }
-
-  // TODO [OPAQUE SUPPORT]: right now we only allow one structural 'some' type,
-  // but *very* soon we will allow more than one such type.
   for (unsigned i = 0; i < opaqueReprs.size(); ++i) {
     auto *currentRepr = opaqueReprs[i];
 
@@ -266,9 +259,9 @@ OpaqueResultTypeRequest::evaluate(Evaluator &evaluator,
     ? originatingGenericContext->getGenericParams()
     : nullptr;
 
-  auto opaqueDecl = new (ctx)
-      OpaqueTypeDecl(originatingDecl, genericParams, parentDC,
-                     interfaceSignature, opaqueReprs[0], genericParamTypes[0]);
+  auto opaqueDecl = OpaqueTypeDecl::create(originatingDecl, genericParams,
+                                           parentDC, interfaceSignature,
+                                           genericParamTypes, opaqueReprs);
   opaqueDecl->copyFormalAccessFrom(originatingDecl);
   if (auto originatingSig = originatingDC->getGenericSignatureOfContext()) {
     opaqueDecl->setGenericSignature(originatingSig);

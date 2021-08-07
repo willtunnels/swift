@@ -5464,19 +5464,23 @@ class OpaqueTypeArchetypeType final : public ArchetypeType,
 
   /// The declaration that defines the opaque type.
   OpaqueTypeDecl *OpaqueDecl;
+
   /// The substitutions into the interface signature of the opaque type.
   SubstitutionMap Substitutions;
   
   /// A GenericEnvironment with this opaque archetype bound to the interface
   /// type of the output type from the OpaqueDecl.
   GenericEnvironment *Environment;
-  
+
+  /// The ordinal of the type within the declaration's opaque signature.
+  unsigned Ordinal;
+
 public:
   /// Get an opaque archetype representing the underlying type of the given
   /// opaque type decl's opaque param with ordinal `ordinal`. For example, in
   /// `(some P, some Q)`, `some P`'s type param would have ordinal 0 and `some
   /// Q`'s type param would have ordinal 1.
-  static OpaqueTypeArchetypeType *get(OpaqueTypeDecl *Decl, unsigned ordinal,
+  static OpaqueTypeArchetypeType *get(OpaqueTypeDecl *Decl, unsigned Ordinal,
                                       SubstitutionMap Substitutions);
 
   OpaqueTypeDecl *getDecl() const {
@@ -5508,11 +5512,8 @@ public:
   ///   func foo() -> (some P, some Q)
   ///
   /// then the underlying type of `some P` would be ordinal 0, and `some Q` would be ordinal 1.
-  unsigned getOrdinal() const {
-    // TODO [OPAQUE SUPPORT]: multiple opaque types
-    return 0;
-  }
-  
+  unsigned getOrdinal() const { return Ordinal; }
+
   static void Profile(llvm::FoldingSetNodeID &ID,
                       OpaqueTypeDecl *OpaqueDecl,
                       SubstitutionMap Substitutions);
@@ -5522,12 +5523,11 @@ public:
   };
   
 private:
-  OpaqueTypeArchetypeType(OpaqueTypeDecl *OpaqueDecl,
+  OpaqueTypeArchetypeType(OpaqueTypeDecl *OpaqueDecl, unsigned Ordinal,
                           SubstitutionMap Substitutions,
-                          RecursiveTypeProperties Props,
-                          Type InterfaceType,
-                          ArrayRef<ProtocolDecl*> ConformsTo,
-                          Type Superclass, LayoutConstraint Layout);
+                          RecursiveTypeProperties Props, Type InterfaceType,
+                          ArrayRef<ProtocolDecl *> ConformsTo, Type Superclass,
+                          LayoutConstraint Layout);
 };
 BEGIN_CAN_TYPE_WRAPPER(OpaqueTypeArchetypeType, ArchetypeType)
 END_CAN_TYPE_WRAPPER(OpaqueTypeArchetypeType, ArchetypeType)

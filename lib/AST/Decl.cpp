@@ -7550,19 +7550,40 @@ void AbstractFunctionDecl::setParameters(ParameterList *BodyParams) {
   BodyParams->setDeclContextOfParamDecls(this);
 }
 
-OpaqueTypeDecl::OpaqueTypeDecl(ValueDecl *NamingDecl,
-                               GenericParamList *GenericParams, DeclContext *DC,
-                               GenericSignature OpaqueInterfaceGenericSignature,
-                               OpaqueReturnTypeRepr *UnderlyingInterfaceRepr,
-                               GenericTypeParamType *UnderlyingInterfaceType)
+OpaqueTypeDecl::OpaqueTypeDecl(
+    ValueDecl *NamingDecl, GenericParamList *GenericParams, DeclContext *DC,
+    GenericSignature OpaqueInterfaceGenericSignature,
+    ArrayRef<GenericTypeParamType *> UnderlyingInterfaceTypes,
+    ArrayRef<OpaqueReturnTypeRepr *> UnderlyingInterfaceReprs)
     : GenericTypeDecl(DeclKind::OpaqueType, DC, Identifier(), SourceLoc(), {},
                       GenericParams),
       NamingDecl(NamingDecl),
       OpaqueInterfaceGenericSignature(OpaqueInterfaceGenericSignature),
-      UnderlyingInterfaceRepr(UnderlyingInterfaceRepr),
-      UnderlyingInterfaceType(UnderlyingInterfaceType) {
+      NumUnderlyingInterfaceTypes(UnderlyingInterfaceType.size()),
+      NumUnderlyingInterfaceReprs(UnderlyingInterfaceRepr.size()) {
+  std::uninitialized_copy(UnderlyingInterfaceTypes.begin(),
+                          UnderlyingInterfaceTypes.end(),
+                          getTrailingObjects<GenericTypeParamType *>());
+  std::uninitialized_copy(UnderlyingInterfaceReprs.begin(),
+                          UnderlyingInterfaceReprs.end(),
+                          getTrailingObjects<OpaqueReturnTypeRepr *>());
   // Always implicit.
   setImplicit();
+}
+
+OpaqueTypeDecl *OpaqueTypeDecl::create(
+    ValueDecl *NamingDecl, GenericParamList *GenericParams, DeclContext *DC,
+    GenericSignature OpaqueInterfaceGenericSignature,
+    ArrayRef<GenericTypeParamType *> UnderlyingInterfaceTypes,
+    ArrayRef<OpaqueReturnTypeRepr *> UnderlyingInterfaceReprs) {
+
+  size_t size =
+      totalSizeToAlloc<GenericTypeParamType *, OpaqueReturnTypeRepr *>(
+          UnderlyingInterfaceTypes.size(), UnderlyingInterfaceReprs.size());
+  void *mem = DC->getASTContext().Allocate(size, alignof(OpaqueTypeDecl));
+  return ::new (mem) OpaqueTypeDecl(
+      NamingDecl, GenericParams, DC, OpaqueInterfaceGenericSignature,
+      UnderlyingInterfaceTypes, UnderlyingInterfaceReprs);
 }
 
 bool OpaqueTypeDecl::isOpaqueReturnTypeOfFunction(
@@ -7582,11 +7603,10 @@ bool OpaqueTypeDecl::isOpaqueReturnTypeOfFunction(
 
 unsigned OpaqueTypeDecl::getAnonymousOpaqueParamOrdinal(
     OpaqueReturnTypeRepr *repr) const {
-  // TODO [OPAQUE SUPPORT]: we will need to generalize here when we allow
-  // multiple "some" types.
-  assert(UnderlyingInterfaceRepr &&
-         "can't do opaque param lookup without underlying interface repr");
-  return repr == UnderlyingInterfaceRepr ? 0 : -1;
+  auto reprs = getUnderlyingInterfaceReprs();
+  assert(reprs.size() > 0 &&
+         "cannot do anonymous lookup without type repr information");
+  return std::find(reprs.begin(), reprs.end(), repr) - reprs.begin();
 }
 
 Identifier OpaqueTypeDecl::getOpaqueReturnTypeIdentifier() const {

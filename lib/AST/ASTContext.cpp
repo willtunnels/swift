@@ -4160,11 +4160,11 @@ DependentMemberType *DependentMemberType::get(Type base,
 }
 
 OpaqueTypeArchetypeType *
-OpaqueTypeArchetypeType::get(OpaqueTypeDecl *Decl, unsigned ordinal,
+OpaqueTypeArchetypeType::get(OpaqueTypeDecl *Decl, unsigned Ordinal,
                              SubstitutionMap Substitutions) {
-  // TODO [OPAQUE SUPPORT]: multiple opaque types
-  assert(ordinal == 0 && "we only support one 'some' type per composite type");
-  auto opaqueParamType = Decl->getUnderlyingInterfaceType();
+  assert(Ordinal < Decl->getUnderlyingInterfaceTypes().size() &&
+         "opaque type ordinal is too large; index would be out of bounds");
+  auto opaqueParamType = Decl->getUnderlyingInterfaceTypes()[Ordinal];
 
   // TODO: We could attempt to preserve type sugar in the substitution map.
   // Currently archetypes are assumed to be always canonical in many places,
@@ -4285,9 +4285,9 @@ OpaqueTypeArchetypeType::get(OpaqueTypeDecl *Decl, unsigned ordinal,
       alignof(OpaqueTypeArchetypeType),
       arena);
 
-  auto newOpaque = ::new (mem)
-      OpaqueTypeArchetypeType(Decl, Substitutions, properties, opaqueParamType,
-                              reqs.protos, superclass, reqs.layout);
+  auto newOpaque = ::new (mem) OpaqueTypeArchetypeType(
+      Decl, Ordinal, Substitutions, properties, opaqueParamType, reqs.protos,
+      superclass, reqs.layout);
 
   // Create a generic environment and bind the opaque archetype to the
   // opaque interface type from the decl's signature.

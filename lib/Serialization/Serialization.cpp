@@ -3720,8 +3720,11 @@ public:
     auto contextID = S.addDeclContextRef(opaqueDecl->getDeclContext());
     auto interfaceSigID = S.addGenericSignatureRef(
         opaqueDecl->getOpaqueInterfaceGenericSignature());
-    auto interfaceTypeID =
-      S.addTypeRef(opaqueDecl->getUnderlyingInterfaceType());
+
+    SmallVector<TypeID, 4> interfaceTypeIDs;
+    for (auto *interfaceType : opaqueDecl->getUnderlyingInterfaceTypes()) {
+      interfaceTypeIDs.push_back(S.addTypeRef(interfaceType));
+    }
 
     auto genericSigID = S.addGenericSignatureRef(opaqueDecl->getGenericSignature());
 
@@ -3733,8 +3736,9 @@ public:
     unsigned abbrCode = S.DeclTypeAbbrCodes[OpaqueTypeLayout::Code];
     OpaqueTypeLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
                                  contextID.getOpaqueValue(), namingDeclID,
-                                 interfaceSigID, interfaceTypeID, genericSigID,
-                                 underlyingTypeID, rawAccessLevel);
+                                 interfaceSigID, genericSigID, underlyingTypeID,
+                                 rawAccessLevel, interfaceTypeIDs);
+
     writeGenericParams(opaqueDecl->getGenericParams());
   }
 
@@ -4349,7 +4353,8 @@ public:
     auto substMapID = S.addSubstitutionMapRef(archetypeTy->getSubstitutions());
     unsigned abbrCode = S.DeclTypeAbbrCodes[OpaqueArchetypeTypeLayout::Code];
     OpaqueArchetypeTypeLayout::emitRecord(S.Out, S.ScratchRecord, abbrCode,
-                                          declID, substMapID);
+                                          declID, archetypeTy->getOrdinal(),
+                                          substMapID);
   }
 
   void visitNestedArchetypeType(const NestedArchetypeType *archetypeTy) {

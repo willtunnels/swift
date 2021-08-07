@@ -3442,31 +3442,38 @@ public:
     DeclID namingDeclID;
     DeclContextID contextID;
     GenericSignatureID interfaceSigID;
-    TypeID interfaceTypeID;
     GenericSignatureID genericSigID;
     SubstitutionMapID underlyingTypeID;
     uint8_t rawAccessLevel;
-    decls_block::OpaqueTypeLayout::readRecord(scratch, contextID,
-                                              namingDeclID, interfaceSigID,
-                                              interfaceTypeID, genericSigID,
-                                              underlyingTypeID, rawAccessLevel);
-    
+    ArrayRef<uint64_t> rawUnderlyingInterfaceTypeIDs;
+    decls_block::OpaqueTypeLayout::readRecord(
+        scratch, contextID, namingDeclID, interfaceSigID, genericSigID,
+        underlyingTypeID, rawAccessLevel, rawUnderlyingInterfaceTypeIDs);
+
     auto declContext = MF.getDeclContext(contextID);
     auto interfaceSig = MF.getGenericSignature(interfaceSigID);
-    auto interfaceType = MF.getType(interfaceTypeID)
-                            ->castTo<GenericTypeParamType>();
-    
+
+    SmallVector<GenericTypeParamType *, 4> interfaceTypes;
+    for (TypeID typeID : rawUnderlyingInterfaceTypeIDs) {
+      interfaceTypes.push_back(
+          MF.getType(typeID)->castTo<GenericTypeParamType>());
+    }
+
     // Check for reentrancy.
     if (declOrOffset.isComplete())
       return cast<OpaqueTypeDecl>(declOrOffset.get());
-      
+
     // Create the decl.
-    auto opaqueDecl = new (ctx)
-        OpaqueTypeDecl(/*NamingDecl*/ nullptr,
-                       /*GenericParams*/ nullptr, declContext, interfaceSig,
-                       /*UnderlyingInterfaceTypeRepr*/ nullptr, interfaceType);
+    // NOTE: UnderlyingInterfaceTypeReprs is used to do anonymous opaque result
+    // type lookup during type resolution. We are done with type resolution, so
+    // it's fine to leave this empty.
+    auto opaqueDecl = OpaqueTypeDecl::create(
+        /*NamingDecl*/ nullptr,
+        /*GenericParams*/ nullptr, declContext, interfaceSig, interfaceTypes,
+        /*UnderlyingInterfaceTypeReprs*/ {});
     declOrOffset = opaqueDecl;
 
+    // Fill in NamingDecl.
     auto namingDecl = cast<ValueDecl>(MF.getDecl(namingDeclID));
     opaqueDecl->setNamingDecl(namingDecl);
 
@@ -3475,6 +3482,7 @@ public:
     else
       MF.fatal();
 
+    // Fill in GenericParams.
     if (auto genericParams = MF.maybeReadGenericParams(opaqueDecl)) {
       ctx.evaluator.cacheOutput(GenericParamListRequest{opaqueDecl},
                                 std::move(genericParams));
@@ -5461,9 +5469,10 @@ public:
   Expected<Type> deserializeOpaqueArchetypeType(ArrayRef<uint64_t> scratch,
                                                 StringRef blobData) {
     DeclID opaqueDeclID;
+    unsigned ordinal;
     SubstitutionMapID subsID;
-    decls_block::OpaqueArchetypeTypeLayout::readRecord(scratch,
-                                                       opaqueDeclID, subsID);
+    decls_block::OpaqueArchetypeTypeLayout::readRecord(scratch, opaqueDeclID,
+                                                       ordinal, subsID);
 
     auto opaqueTypeOrError = MF.getDeclChecked(opaqueDeclID);
     if (!opaqueTypeOrError)
@@ -5474,9 +5483,7 @@ public:
     if (!subsOrError)
       return subsOrError.takeError();
 
-    // TODO [OPAQUE SUPPORT]: to support multiple opaque types we will probably
-    // have to serialize the ordinal, which is always 0 for now
-    return OpaqueTypeArchetypeType::get(opaqueDecl, 0, subsOrError.get());
+    return OpaqueTypeArchetypeType::get(opaqueDecl, ordinal, subsOrError.get());
   }
       
   Expected<Type> deserializeNestedArchetypeType(ArrayRef<uint64_t> scratch,

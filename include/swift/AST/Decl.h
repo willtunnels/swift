@@ -2640,7 +2640,12 @@ public:
 /// The declared type uses a special kind of archetype type to represent
 /// abstracted types, e.g. `(some P, some Q)` becomes `((opaque archetype 0),
 /// (opaque archetype 1))`.
-class OpaqueTypeDecl : public GenericTypeDecl {
+class OpaqueTypeDecl final
+    : public GenericTypeDecl,
+      private llvm::TrailingObjects<OpaqueTypeDecl, GenericTypeParamType *,
+                                    OpaqueReturnTypeRepr *> {
+  friend TrailingObjects;
+
   /// The original declaration that "names" the opaque type. Although a specific
   /// opaque type cannot be explicitly named, oapque types can propagate
   /// arbitrarily through expressions, so we need to know *which* opaque type is
@@ -2652,13 +2657,6 @@ class OpaqueTypeDecl : public GenericTypeDecl {
   /// abstracted underlying types.
   GenericSignature OpaqueInterfaceGenericSignature;
 
-  /// The type repr of the underlying type. Might be null if no source location
-  /// is availble, e.g. if this decl was loaded from a serialized module.
-  OpaqueReturnTypeRepr *UnderlyingInterfaceRepr;
-
-  /// The generic parameter that represents the underlying type.
-  GenericTypeParamType *UnderlyingInterfaceType;
-  
   /// If known, the underlying type and conformances of the opaque type,
   /// expressed as a SubstitutionMap for the opaque interface generic signature.
   /// This maps types in the interface generic signature to the outer generic
@@ -2666,13 +2664,38 @@ class OpaqueTypeDecl : public GenericTypeDecl {
   Optional<SubstitutionMap> UnderlyingTypeSubstitutions;
   
   mutable Identifier OpaqueReturnTypeIdentifier;
-  
-public:
+
+  // Trailing objects.
+  unsigned NumUnderlyingInterfaceTypes;
+  unsigned NumUnderlyingInterfaceReprs;
+
+  size_t numTrailingObjects(OverloadToken<GenericTypeParamType *>) const {
+    return NumUnderlyingInterfaceTypes;
+  }
+  size_t numTrailingObjects(OverloadToken<OpaqueReturnTypeRepr *>) const {
+    return NumUnderlyingInterfaceReprs;
+  }
+
+  /// Get the type reprs for the underlying types of our opaque types. An empty
+  /// array is returned if no source locations are availble, e.g. if this decl
+  /// was loaded from a serialized module.
+  ArrayRef<OpaqueReturnTypeRepr *> getUnderlyingInterfaceReprs() const {
+    return {getTrailingObjects<OpaqueReturnTypeRepr *>(),
+            NumUnderlyingInterfaceReprs};
+  }
+
   OpaqueTypeDecl(ValueDecl *NamingDecl, GenericParamList *GenericParams,
                  DeclContext *DC,
                  GenericSignature OpaqueInterfaceGenericSignature,
-                 OpaqueReturnTypeRepr *UnderlyingInterfaceRepr,
-                 GenericTypeParamType *UnderlyingInterfaceType);
+                 ArrayRef<GenericTypeParamType *> UnderlyingInterfaceTypes,
+                 ArrayRef<OpaqueReturnTypeRepr *> UnderlyingInterfaceReprs);
+
+public:
+  static OpaqueTypeDecl *
+  create(ValueDecl *NamingDecl, GenericParamList *GenericParams,
+         DeclContext *DC, GenericSignature OpaqueInterfaceGenericSignature,
+         ArrayRef<GenericTypeParamType *> UnderlyingInterfaceTypes,
+         ArrayRef<OpaqueReturnTypeRepr *> UnderlyingInterfaceReprs);
 
   ValueDecl *getNamingDecl() const { return NamingDecl; }
   
@@ -2695,11 +2718,13 @@ public:
   GenericSignature getOpaqueInterfaceGenericSignature() const {
     return OpaqueInterfaceGenericSignature;
   }
-  
-  GenericTypeParamType *getUnderlyingInterfaceType() const {
-    return UnderlyingInterfaceType;
+
+  /// Get the generic parameters for the underlying types of our opaque types.
+  ArrayRef<GenericTypeParamType *> getUnderlyingInterfaceTypes() const {
+    return {getTrailingObjects<GenericTypeParamType *>(),
+            NumUnderlyingInterfaceTypes};
   }
-  
+
   Optional<SubstitutionMap> getUnderlyingTypeSubstitutions() const {
     return UnderlyingTypeSubstitutions;
   }

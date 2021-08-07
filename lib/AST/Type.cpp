@@ -3046,19 +3046,14 @@ NestedArchetypeType::NestedArchetypeType(const ASTContext &Ctx,
 {
 }
 
-OpaqueTypeArchetypeType::OpaqueTypeArchetypeType(OpaqueTypeDecl *OpaqueDecl,
-                                   SubstitutionMap Substitutions,
-                                   RecursiveTypeProperties Props,
-                                   Type InterfaceType,
-                                   ArrayRef<ProtocolDecl*> ConformsTo,
-                                   Type Superclass, LayoutConstraint Layout)
-  : ArchetypeType(TypeKind::OpaqueTypeArchetype, OpaqueDecl->getASTContext(),
-                  Props,
-                  InterfaceType, ConformsTo, Superclass, Layout),
-    OpaqueDecl(OpaqueDecl),
-    Substitutions(Substitutions)
-{
-}
+OpaqueTypeArchetypeType::OpaqueTypeArchetypeType(
+    OpaqueTypeDecl *OpaqueDecl, unsigned Ordinal, SubstitutionMap Substitutions,
+    RecursiveTypeProperties Props, Type InterfaceType,
+    ArrayRef<ProtocolDecl *> ConformsTo, Type Superclass,
+    LayoutConstraint Layout)
+    : ArchetypeType(TypeKind::OpaqueTypeArchetype, OpaqueDecl->getASTContext(),
+                    Props, InterfaceType, ConformsTo, Superclass, Layout),
+      OpaqueDecl(OpaqueDecl), Ordinal(Ordinal), Substitutions(Substitutions) {}
 
 GenericSignature OpaqueTypeArchetypeType::getBoundSignature() const {
   return Environment->getGenericSignature();
