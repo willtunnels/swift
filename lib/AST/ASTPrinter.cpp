@@ -4400,6 +4400,13 @@ public:
     }
   }
 
+  void visitUnresolvedOpaqueType(UnresolvedOpaqueType *T) {
+    if (Options.PrintTypesForDebugging)
+      Printer << "<<unresolved opaque type>>";
+    else
+      Printer << "_";
+  }
+
 #ifdef ASTPRINTER_HANDLE_BUILTINTYPE
 #error "ASTPRINTER_HANDLE_BUILTINTYPE should not be defined?!"
 #endif

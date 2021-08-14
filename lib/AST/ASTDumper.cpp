@@ -3465,6 +3465,8 @@ namespace {
       PrintWithColorRAII(OS, ParenthesisColor) << ')';
     }
 
+    TRIVIAL_TYPE_PRINTER(UnresolvedOpaque, unresolved_opaque)
+
     void visitBuiltinIntegerType(BuiltinIntegerType *T, StringRef label) {
       printCommon(label, "builtin_integer_type");
       if (T->isFixedWidth())

@@ -5215,6 +5215,7 @@ ConstraintSystem::matchTypes(Type type1, Type type2, ConstraintKind kind,
 
     case TypeKind::Error:
     case TypeKind::Unresolved:
+    case TypeKind::UnresolvedOpaque:
       return getTypeMatchFailure(locator);
 
     case TypeKind::Placeholder: {
@@ -6001,6 +6002,7 @@ ConstraintSystem::simplifyConstructionConstraint(
       llvm_unreachable("artificial type in constraint");
     
   case TypeKind::Unresolved:
+  case TypeKind::UnresolvedOpaque:
   case TypeKind::Error:
   case TypeKind::Placeholder:
     return SolutionKind::Error;

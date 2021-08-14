@@ -206,6 +206,7 @@ bool CanType::isReferenceTypeImpl(CanType type, const GenericSignatureImpl *sig,
   case TypeKind::SILBlockStorage:
   case TypeKind::Error:
   case TypeKind::Unresolved:
+  case TypeKind::UnresolvedOpaque:
   case TypeKind::BuiltinInteger:
   case TypeKind::BuiltinIntegerLiteral:
   case TypeKind::BuiltinFloat:
@@ -1297,6 +1298,7 @@ CanType TypeBase::computeCanonicalType() {
 #include "swift/AST/TypeNodes.def"
   case TypeKind::Error:
   case TypeKind::Unresolved:
+  case TypeKind::UnresolvedOpaque:
   case TypeKind::TypeVariable:
   case TypeKind::Placeholder:
     llvm_unreachable("these types are always canonical");
@@ -3077,6 +3079,10 @@ getArchetypeAndRootOpaqueArchetype(Type maybeOpaqueType) {
   return std::make_pair(archetype, opaqueRoot);
 }
 
+Type UnresolvedOpaqueType::get(ASTContext &ctx) {
+  return new (ctx, AllocationArena::Permanent) UnresolvedOpaqueType(ctx);
+}
+
 OpaqueSubstitutionKind
 ReplaceOpaqueTypesWithUnderlyingTypes::shouldPerformSubstitution(
     OpaqueTypeDecl *opaque) const {
@@ -4454,6 +4460,7 @@ case TypeKind::Id:
   case TypeKind::OpenedArchetype:
   case TypeKind::Error:
   case TypeKind::Unresolved:
+  case TypeKind::UnresolvedOpaque:
   case TypeKind::TypeVariable:
   case TypeKind::Placeholder:
   case TypeKind::GenericTypeParam:
@@ -5222,6 +5229,7 @@ ReferenceCounting TypeBase::getReferenceCounting() {
   case TypeKind::SILBlockStorage:
   case TypeKind::Error:
   case TypeKind::Unresolved:
+  case TypeKind::UnresolvedOpaque:
   case TypeKind::BuiltinInteger:
   case TypeKind::BuiltinIntegerLiteral:
   case TypeKind::BuiltinFloat:

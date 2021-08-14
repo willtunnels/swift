@@ -4219,6 +4219,10 @@ public:
     llvm_unreachable("should not serialize an UnresolvedType");
   }
 
+  void visitUnresolvedOpaqueType(const UnresolvedOpaqueType *) {
+    llvm_unreachable("should not serialize an UnresolvedOpaqueType");
+  }
+
   void visitPlaceholderType(const PlaceholderType *) {
     llvm_unreachable("should not serialize a PlaceholderType");
   }

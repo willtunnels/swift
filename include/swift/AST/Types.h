@@ -5547,6 +5547,25 @@ private:
 BEGIN_CAN_TYPE_WRAPPER(OpaqueTypeArchetypeType, ArchetypeType)
 END_CAN_TYPE_WRAPPER(OpaqueTypeArchetypeType, ArchetypeType)
 
+// During structural type resolution, we don't fully resolve opaque types to
+// their `OpaqueTypeArchetypeType`s. Instead, we use this type which we can
+// create even if we don't have an `OpaqueTypeDecl`.
+//
+// Don't confuse this with an `UnresolvedType`. They have similar names, but
+// their usage is not particularly related. Naming is hard...
+class UnresolvedOpaqueType : public TypeBase {
+  UnresolvedOpaqueType(ASTContext &ctx)
+    : TypeBase(TypeKind::UnresolvedOpaque, &ctx, RecursiveTypeProperties()) {}
+
+public:
+  static Type get(ASTContext &ctx);
+
+  static bool classof(const TypeBase *T) {
+    return T->getKind() == TypeKind::UnresolvedOpaque;
+  }
+};
+DEFINE_EMPTY_CAN_TYPE_WRAPPER(UnresolvedOpaqueType, Type)
+
 enum class OpaqueSubstitutionKind {
   // Don't substitute the opaque type for the underlying type.
   DontSubstitute,

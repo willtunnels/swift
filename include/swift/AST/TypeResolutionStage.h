@@ -25,7 +25,7 @@ namespace swift {
 enum class TypeResolutionStage : uint8_t {
   /// Produces an interface type describing its structure, but without
   /// performing semantic analysis to resolve (e.g.) references to members of
-  /// type parameters.
+  /// type parameters or references to opaque types.
   Structural,
 
   /// Produces a complete interface type where all member references have been

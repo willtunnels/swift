@@ -1027,6 +1027,12 @@ void ASTMangler::appendType(Type type, const ValueDecl *forDecl) {
     case TypeKind::Placeholder:
       llvm_unreachable("mangling type variable");
 
+    case TypeKind::UnresolvedOpaque:
+      llvm_unreachable(
+        "unresolved opaque types are just structural placeholders; we shouldnt"
+        "ever need to mangle them"
+      );
+
     case TypeKind::Module:
       llvm_unreachable("Cannot mangle module type yet");
 

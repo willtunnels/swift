@@ -1650,6 +1650,7 @@ private:
     // checker.
     case TypeKind::Error:
     case TypeKind::Unresolved:
+    case TypeKind::UnresolvedOpaque:
     case TypeKind::LValue:
     case TypeKind::TypeVariable:
     case TypeKind::Placeholder:

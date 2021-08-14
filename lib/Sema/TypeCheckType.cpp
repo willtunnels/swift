@@ -2031,12 +2031,26 @@ NeverNullType TypeResolver::resolveType(TypeRepr *repr,
     return resolveProtocolType(cast<ProtocolTypeRepr>(repr), options);
 
   case TypeReprKind::OpaqueReturn: {
-    // If the opaque type is in a valid position, e.g. part of a function return
-    // type, resolution should happen in the context of an `OpaqueTypeDecl`.
-    // This decl is implicit in the source and is created in such contexts by
-    // evaluation of an `OpaqueResultTypeRequest`.
-    auto opaqueRepr = cast<OpaqueReturnTypeRepr>(repr);
     auto *DC = getDeclContext();
+
+    // When we create an opaque decl we need the generic signature of its
+    // parent, but to get the generic signature of its parent we need to
+    // analyzes the parent's result type. Unfortunately, this result type
+    // includes opaque types from the opaque decl we are trying to create.
+    // 
+    // However, opaque types can't affect the generic signature builder's
+    // constraint inference, so to break this cycle we can just substitute in
+    // some arbitrary placeholder type. To keep things "obvious," we use the
+    // special `UnresolvedOpaqueType` type.
+    if (resolution.getStage() == TypeResolutionStage::Structural)
+      return UnresolvedOpaqueType::get(DC->getASTContext());
+
+    // If an opaque type is in a valid position, e.g. part of a function's
+    // result type, later stages of resolution (past 'structural' resolution)
+    // should happen in the context of an `OpaqueTypeDecl`. This decl is
+    // implicit in the source code and is created in such contexts by evaluation
+    // of an `OpaqueResultTypeRequest`.
+    auto opaqueRepr = cast<OpaqueReturnTypeRepr>(repr);
     if (isa<OpaqueTypeDecl>(DC)) {
       auto opaqueDecl = cast<OpaqueTypeDecl>(DC);
       auto outerGenericSignature = opaqueDecl->getNamingDecl()

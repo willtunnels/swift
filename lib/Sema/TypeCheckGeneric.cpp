@@ -768,7 +768,7 @@ GenericSignatureRequest::evaluate(Evaluator &evaluator,
           return nullptr;
         }
       }();
-      if (resultTypeRepr && !isa<OpaqueReturnTypeRepr>(resultTypeRepr)) {
+      if (resultTypeRepr) {
         const auto resultType =
             resolution.withOptions(TypeResolverContext::FunctionResult)
                 .resolveType(resultTypeRepr);

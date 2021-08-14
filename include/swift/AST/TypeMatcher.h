@@ -113,6 +113,12 @@ class TypeMatcher {
       return mismatch(firstType.getPointer(), secondType, sugaredFirstType);
     }
 
+    bool visitUnresolvedOpaqueType(CanUnresolvedOpaqueType firstType, Type secondType,
+                                   Type sugaredFirstType) {
+      // Unresolved types never match.
+      return mismatch(firstType.getPointer(), secondType, sugaredFirstType);
+    }
+
     bool visitTupleType(CanTupleType firstTuple, Type secondType,
                         Type sugaredFirstType) {
       if (auto secondTuple = secondType->getAs<TupleType>()) {

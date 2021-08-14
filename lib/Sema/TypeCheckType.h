@@ -318,7 +318,7 @@ private:
 public:
   /// Form a type resolution for the structure of a type, which does not
   /// attempt to resolve member types of type parameters to a particular
-  /// associated type.
+  /// associated type or opaque result types to their archetypes.
   static TypeResolution
   forStructural(DeclContext *dc, TypeResolutionOptions opts,
                 OpenUnboundGenericTypeFn unboundTyOpener,
